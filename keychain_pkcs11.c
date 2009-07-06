@@ -3111,7 +3111,7 @@ freeObjectSearchList(sessionEntry *session) {
         return;
     }
     
-    cur = session->searchList;
+    session->cursor = session->searchList;
     
     while(session->cursor != NULL) {
         removeObjectFromSearchResults(session, session->cursor->object);
@@ -3153,6 +3153,7 @@ addObjectToSearchResults(sessionEntry *session, objectEntry *object) {
 
 void
 removeObjectFromSearchResults(sessionEntry *session, objectEntry *object) {
+    objectSearchEntry *next = NULL;
     
     if(session->searchList == NULL) {
         return;
@@ -3160,6 +3161,7 @@ removeObjectFromSearchResults(sessionEntry *session, objectEntry *object) {
     
     session->cursor = session->searchList;
     while(session->cursor != NULL) {
+        next = session->cursor->next;
         if(session->cursor->object == object) {
             
             if(session->cursor->previous != NULL) {
@@ -3171,9 +3173,10 @@ removeObjectFromSearchResults(sessionEntry *session, objectEntry *object) {
             if(session->cursor->next != NULL) {
                 session->cursor->next->previous = session->cursor->previous;
             } 
+            
             free(session->cursor);
         }
-        session->cursor = session->cursor->next;
+        session->cursor = next;
     }
 }
 

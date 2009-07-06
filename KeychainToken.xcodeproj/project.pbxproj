@@ -8,34 +8,16 @@
 
 /* Begin PBXBuildFile section */
 		692300820FF557160031A8B7 /* preferences.c in Sources */ = {isa = PBXBuildFile; fileRef = 692300800FF557160031A8B7 /* preferences.c */; };
-		692300830FF55AF10031A8B7 /* preferences.c in Sources */ = {isa = PBXBuildFile; fileRef = 692300800FF557160031A8B7 /* preferences.c */; };
-		692300BD0FF55CD00031A8B7 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 692300BC0FF55CD00031A8B7 /* CoreServices.framework */; };
 		6924E80C0FFC0A9A00907808 /* debug.h in Headers */ = {isa = PBXBuildFile; fileRef = 6924E80A0FFC0A9A00907808 /* debug.h */; };
 		6924E80D0FFC0A9A00907808 /* debug.c in Sources */ = {isa = PBXBuildFile; fileRef = 6924E80B0FFC0A9A00907808 /* debug.c */; };
 		6924E80E0FFC0A9A00907808 /* debug.c in Sources */ = {isa = PBXBuildFile; fileRef = 6924E80B0FFC0A9A00907808 /* debug.c */; };
-		6983BB570FEFED9C00FED01D /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6983BB560FEFED9C00FED01D /* CoreFoundation.framework */; };
-		6983BB5C0FEFEDAE00FED01D /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6983BB5B0FEFEDAE00FED01D /* Security.framework */; };
 		6983BB8E0FF14B0B00FED01D /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6983BB8D0FF14B0B00FED01D /* Security.framework */; };
 		6983BC060FF14BDA00FED01D /* pkcs11.h in Headers */ = {isa = PBXBuildFile; fileRef = 6983BC050FF14BDA00FED01D /* pkcs11.h */; };
 		6983BC080FF14C6C00FED01D /* pkcs11f.h in Headers */ = {isa = PBXBuildFile; fileRef = 6983BC070FF14C6C00FED01D /* pkcs11f.h */; };
 		6983BCB90FF14C9500FED01D /* pkcs11t.h in Headers */ = {isa = PBXBuildFile; fileRef = 6983BCB80FF14C9500FED01D /* pkcs11t.h */; };
 		6983BDC80FF2768100FED01D /* keychain_pkcs11.c in Sources */ = {isa = PBXBuildFile; fileRef = 6983BB7C0FF008B100FED01D /* keychain_pkcs11.c */; };
 		6983BDDA0FF2771D00FED01D /* pkcs11_test.c in Sources */ = {isa = PBXBuildFile; fileRef = 6983BDD20FF276EF00FED01D /* pkcs11_test.c */; };
-		8DD76FB00486AB0100D96B5E /* KeychainToken.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = C6A0FF2C0290799A04C91782 /* KeychainToken.1 */; };
 /* End PBXBuildFile section */
-
-/* Begin PBXCopyFilesBuildPhase section */
-		8DD76FAF0486AB0100D96B5E /* CopyFiles */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 8;
-			dstPath = /usr/share/man/man1/;
-			dstSubfolderSpec = 0;
-			files = (
-				8DD76FB00486AB0100D96B5E /* KeychainToken.1 in CopyFiles */,
-			);
-			runOnlyForDeploymentPostprocessing = 1;
-		};
-/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		6923007F0FF557160031A8B7 /* preferences.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = preferences.h; sourceTree = "<group>"; };
@@ -57,7 +39,6 @@
 		6983BDD10FF276EF00FED01D /* pkcs11_test.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pkcs11_test.h; sourceTree = "<group>"; };
 		6983BDD20FF276EF00FED01D /* pkcs11_test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = pkcs11_test.c; sourceTree = "<group>"; };
 		6983BDD60FF2770E00FED01D /* pkcs11_test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = pkcs11_test; sourceTree = BUILT_PRODUCTS_DIR; };
-		8DD76FB20486AB0100D96B5E /* KeychainToken */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = KeychainToken; sourceTree = BUILT_PRODUCTS_DIR; };
 		C6A0FF2C0290799A04C91782 /* KeychainToken.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = KeychainToken.1; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -74,16 +55,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		8DD76FAD0486AB0100D96B5E /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				6983BB570FEFED9C00FED01D /* CoreFoundation.framework in Frameworks */,
-				6983BB5C0FEFEDAE00FED01D /* Security.framework in Frameworks */,
-				692300BD0FF55CD00031A8B7 /* CoreServices.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -124,7 +95,6 @@
 		1AB674ADFE9D54B511CA2CBB /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				8DD76FB20486AB0100D96B5E /* KeychainToken */,
 				6983BB8A0FF14AEC00FED01D /* keychain_pkcs11.dylib */,
 				6983BDD60FF2770E00FED01D /* pkcs11_test */,
 			);
@@ -200,24 +170,6 @@
 			productReference = 6983BDD60FF2770E00FED01D /* pkcs11_test */;
 			productType = "com.apple.product-type.tool";
 		};
-		8DD76FA90486AB0100D96B5E /* KeychainToken */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 1DEB928508733DD80010E9CD /* Build configuration list for PBXNativeTarget "KeychainToken" */;
-			buildPhases = (
-				8DD76FAB0486AB0100D96B5E /* Sources */,
-				8DD76FAD0486AB0100D96B5E /* Frameworks */,
-				8DD76FAF0486AB0100D96B5E /* CopyFiles */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = KeychainToken;
-			productInstallPath = "$(HOME)/bin";
-			productName = KeychainToken;
-			productReference = 8DD76FB20486AB0100D96B5E /* KeychainToken */;
-			productType = "com.apple.product-type.tool";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -230,7 +182,6 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				8DD76FA90486AB0100D96B5E /* KeychainToken */,
 				6983BB890FF14AEC00FED01D /* keychain_pkcs11 */,
 				6983BDD50FF2770E00FED01D /* pkcs11_test */,
 			);
@@ -257,42 +208,9 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		8DD76FAB0486AB0100D96B5E /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				692300830FF55AF10031A8B7 /* preferences.c in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		1DEB928608733DD80010E9CD /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				COPY_PHASE_STRIP = NO;
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_ENABLE_FIX_AND_CONTINUE = YES;
-				GCC_MODEL_TUNING = G5;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				INSTALL_PATH = /usr/local/bin;
-				PRODUCT_NAME = KeychainToken;
-			};
-			name = Debug;
-		};
-		1DEB928708733DD80010E9CD /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/bin;
-				PRODUCT_NAME = KeychainToken;
-			};
-			name = Release;
-		};
 		1DEB928A08733DD80010E9CD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -400,15 +318,6 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		1DEB928508733DD80010E9CD /* Build configuration list for PBXNativeTarget "KeychainToken" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				1DEB928608733DD80010E9CD /* Debug */,
-				1DEB928708733DD80010E9CD /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "KeychainToken" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

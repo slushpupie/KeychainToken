@@ -1,0 +1,76 @@
+NAME
+
+KeychainToken, /Library/KeychainToken/keychain_token.dylib
+
+SYNOPSIS
+ 
+This is the Keychain PKCS#11 Token "driver".  Use it with applications 
+that cannot interact with Keychain but can interact with PKCS#11 devices
+(e.g. Mozilla products)
+
+DESCRIPTION
+
+Apple provides a wonderful API for accessing cryptographic functions and
+tokens (Smartcards, softcerts, etc) but it does not provide a way to 
+access these functions via PKCS#11 anymore. This is an attempt to rectify
+this in as sane a way as possible. In its first release only the minimal 
+ammount of PKCS#11 will be implemented to allow basic operation with 
+Mozilla products, as that suits my needs best.  However, future releases
+may include additional functionality.
+
+When using the KeychainToken driver, by default all keychains shown in 
+the Keychain Access application will be visible in different slots, up 
+to the maximum slots (10).  Since this is often not desireable,
+KeychainToken can be configured with a properties list file (plist) 
+found in ~/Library/Preferences/com.apple.KeychainToken.plist .  You can
+create three different Array entries, titled:
+
+ * whitelist
+ * blacklist
+ * greylist
+
+In each of these array entries, create simple string entries with the 
+path name of the keychain you want in the particular list. Some keychains
+will show a path that is not on the filesystem (for example, DoD CAC's 
+show just the serial number of the CAC), and Directory Services shows up
+with an empty path.  Below is a description of each list.
+
+ /whitelist/
+ 
+ When the whitelist is defined at all, all keychains not in the whitelist
+ or greylist will not show up at all. The blacklist will be ignored.
+ 
+ /blacklist/
+ 
+ When the whitelist is not defined, the blacklist is a list of keychains
+ you do not wish to appear as PKCS#11 tokens.
+ 
+ /greylist/
+ 
+ Some keychains cannot be logged into from the PKCS#11 interface. The 
+ System keychain is such an example. Adding keychains to will cause the
+ KeychainToken driver to make a best attempt to tell accessing applications
+ that these keychains are to be treated as read-only devices that cannnot
+ be logged into.  This is only a best attempt, and some applications may
+ prompt for a pin to log in. Keychains in the greylist will never use any
+ login attempt on the actual keychain (to prevent accidental locking)
+ 
+Examples of preferences setup (name:type:value):
+
+Root:Dictionary:(2 items)
+  whitelist:Array:(2 items)
+    Item 1:String:/Users/joe/Library/Keychains/mytoken.keychain
+    Item 2:String:CAC-1234-5678-9012-3456
+  greylist:Array:(1 item)
+    Item 1:String:/Users/joe/Library/Keychains/login.keychain
+    
+
+Root:Dictionary:(2 items)
+  greylist:Array:(1 item)
+    Item 1:String:/Users/joe/Library/Keychains/login.Keychain
+  blacklist:Array:(3 items)
+    Item 1:String:(empty string)
+    Item 2:String:/Library/Keychains/System.keychain
+    Item 3:String/Users/joe/Library/Keychains/expired_token.keychain
+
+Future versions of KeychainToken may provide a graphical tool to configure these preferences.  

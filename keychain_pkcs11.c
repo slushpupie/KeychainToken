@@ -1015,13 +1015,14 @@ signInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HAND
 {
     sessionEntry *session = NULL;
     objectEntry *object = NULL;
-    OSStatus status;
-    CSSM_RETURN ret;
+    OSStatus status = 0;
+    CSSM_RETURN ret = CSSM_OK;
     CK_RV returnVal = CKR_OK;
-        
-    CSSM_CSP_HANDLE cspHandle;
+    CSSM_CSP_HANDLE cspHandle = 0;
     const CSSM_ACCESS_CREDENTIALS *cssmCreds = NULL;
     const CSSM_KEY *cssmKey = NULL;
+    CSSM_ALGORITHMS algorithmID = CSSM_ALGID_NONE;
+    SecKeyRef keyRef = 0;
     
     session = findSessionEntry(hSession);
     if(session == NULL) {
@@ -1042,37 +1043,65 @@ signInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HAND
         return CKR_USER_NOT_LOGGED_IN;
     }
     
-    //TODO: check pMechanism and hKey to make sure we were requested something sane
-    
-    
-      
     status = SecKeychainGetCSPHandle(keychainSlots[session->slot], &cspHandle);
     if (status != 0) {
         debug(1,"Error in SecKeychainGetCSPHandle\n");
         returnVal = CKR_GENERAL_ERROR;
         goto cleanup;
     }
+        
+    switch (object->class) {
+        case CKO_PUBLIC_KEY:
+            keyRef = object->storage.publicKey.keyRef;
+            break;
+        case CKO_PRIVATE_KEY:
+            keyRef = object->storage.privateKey.keyRef;
+            break;
+            
+        default:
+            debug(1,"Object specified is not a key\n");
+            returnVal = CKR_KEY_HANDLE_INVALID;
+            goto cleanup;
+    }
     
-    debug(1,"*PrivateKey SecKeyRef=0x%X\n", object->storage.privateKey.keyRef);
-    
-    status = SecKeyGetCSSMKey(object->storage.privateKey.keyRef, &cssmKey);
+    status = SecKeyGetCSSMKey(keyRef, &cssmKey);
     if (status != 0) {
         debug(1,"Error getting CSSMKey (status = %d)\n", status);
         returnVal = CKR_GENERAL_ERROR;
         goto cleanup;
     }
-    
-    
-    status = SecKeyGetCredentials(object->storage.privateKey.keyRef, CSSM_ACL_AUTHORIZATION_SIGN, kSecCredentialTypeNoUI, &cssmCreds);
+    status = SecKeyGetCredentials(keyRef, CSSM_ACL_AUTHORIZATION_SIGN, kSecCredentialTypeNoUI, &cssmCreds);
     if (status != 0) {
         debug(1,"Error in SecKeyGetCredentials (status = %d)\n", status);
         returnVal = CKR_GENERAL_ERROR;
         goto cleanup;
     }
     
-        
     
-    ret = CSSM_CSP_CreateSignatureContext(cspHandle, CSSM_ALGID_RSA, cssmCreds, cssmKey, session->signContext);
+    switch (pMechanism->mechanism) {
+        case CKM_RSA_PKCS:
+        case CKM_RSA_9796:
+        case CKM_RSA_X_509:    
+            algorithmID = CSSM_ALGID_RSA;
+            break;
+        case CKM_MD2_RSA_PKCS:
+            algorithmID = CSSM_ALGID_MD2WithRSA;
+            break;
+        case CKM_MD5_RSA_PKCS:
+            algorithmID = CSSM_ALGID_MD5WithRSA;
+            break;
+        case CKM_DSA:
+            algorithmID = CSSM_ALGID_DSA;
+            break;
+        case CKM_DSA_SHA1:
+            algorithmID = CSSM_ALGID_SHA1WithDSA;
+            break;
+        default:
+            debug(1,"Mechanism specified that we dont know how to handle (yet?) 0x%X\n",pMechanism->mechanism);
+            returnVal = CKR_MECHANISM_INVALID;
+    }
+        
+    ret = CSSM_CSP_CreateSignatureContext(cspHandle, algorithmID, cssmCreds, cssmKey, session->signContext);
     if (ret != 0) {
         cssmPerror("CSSM_CreateSignatureContext", ret);
         returnVal = CKR_GENERAL_ERROR;

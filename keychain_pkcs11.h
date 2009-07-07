@@ -22,18 +22,20 @@
 #include <time.h>
 
 #include "mypkcs11.h"
+#include "types.h"
+#include "constants.h"
+
+#include "support_funcs.h"
 #include "debug.h"
 #include "preferences.h"
 
-#define MIN(m,n) ((m) < (n) ? (m) : (n))
 
-#define DEBUG 1
-#define DEBUG_LEVEL 10
 
-#define MAX_SLOTS 10
-#define CHECK_SLOTID(id) if ( ((id) < 0) || ((id) > MAX_SLOTS - 1) ) return CKR_SLOT_ID_INVALID
 
-#define MAX_KEYCHAIN_PATH_LEN 2048
+
+
+
+
 
 
 static CK_INFO ckInfo = {
@@ -43,102 +45,6 @@ static CK_INFO ckInfo = {
 "Apple Keychain PKCS#11         ",
 {0, 1}
 };
-
-
-typedef struct _certObjectEntry {
-    SecIdentityRef idRef;
-    SecCertificateRef certRef;
-    unsigned char keyId[SHA_DIGEST_LENGTH];
-    X509 *x509;
-    
-    int havePrivateKey;
-} certObjectEntry;
-
-typedef struct _pubKeyObjectEntry {
-    SecIdentityRef idRef;
-    SecKeyRef keyRef;
-    unsigned char keyId[SHA_DIGEST_LENGTH];
-    X509 *x509;
-    
-} pubKeyObjectEntry;
-    
-typedef struct _privKeyObjectEntry {
-    SecIdentityRef idRef;
-    SecKeyRef keyRef;
-    unsigned char keyId[SHA_DIGEST_LENGTH];
-    X509 *x509;
-    
-} privKeyObjectEntry;
-
-typedef struct _objectEntry {
-    CK_OBJECT_HANDLE id;
-    CK_OBJECT_CLASS class;
-    CK_ATTRIBUTE    *pTemplate;
-    CK_ULONG        templateSize;
-    
-    
-    struct _objectEntry *nextObject;
-    struct _objectEntry *prevObject;
-    
-    union storage_t {
-        certObjectEntry certificate;
-        pubKeyObjectEntry publicKey;
-        privKeyObjectEntry privateKey;
-    } storage;
-        
-} objectEntry;
-
-typedef struct _objectSearchEntry {
-    objectEntry *object;
-    struct _objectSearchEntry *next;
-    struct _objectSearchEntry *previous;
-} objectSearchEntry;
-    
-
-typedef struct _sessionEntry {
-    CK_SESSION_HANDLE id;
-    CK_FLAGS flags;
-    CK_STATE state;
-    CK_SLOT_ID slot;
-    bool loggedIn;
-    
-    CK_ATTRIBUTE_PTR searchFilter;
-    CK_ULONG searchFilter_count;
-    
-    objectEntry *objectList;
-    CK_OBJECT_HANDLE objectCounter;
-    
-    objectSearchEntry *searchList;
-    objectSearchEntry *cursor;
-    
-    CK_ULONG keyIdCounter;
-    
-    CSSM_CC_HANDLE  *decryptContext;
-    CSSM_CC_HANDLE  *signContext;
-
-    
-    CK_VOID_PTR myMutex;
-    
-    struct _sessionEntry *nextSession;
-    struct _sessionEntry *prevSession;
-} sessionEntry;
-
-typedef struct _mechInfo {
-    CK_MECHANISM_TYPE mech;
-    CK_MECHANISM_INFO info;
-} mechInfo;
-
-typedef struct _mutex_functions {
-    bool use;
-    CK_CREATEMUTEX CreateMutex;
-    CK_DESTROYMUTEX DestroyMutex;
-    CK_LOCKMUTEX LockMutex;
-    CK_UNLOCKMUTEX UnlockMutex;
-    
-    CK_VOID_PTR slotMutex;
-    CK_VOID_PTR sessionMutex;
-    
-} mutexFunctions;
 
 CK_BBOOL initialized = CK_FALSE;
 SecKeychainRef keychainSlots[MAX_SLOTS];
@@ -332,30 +238,4 @@ C_GetFunctionList(CK_FUNCTION_LIST_PTR_PTR pPtr)
 }
 
 
-/* Other function declairations */
-
-unsigned int updateSlotList();
-sessionEntry * findSessionEntry(CK_SESSION_HANDLE hSession);
-void addSession(sessionEntry * newSession);
-void removeSession(CK_SESSION_HANDLE hSession);
-void setString(char *in, char *out, int len);
-char * basename(const char *input);
-void freeAllObjects(sessionEntry *session);
-void addObject(sessionEntry *session, objectEntry *object);
-void freeObject(objectEntry *object);
-void removeObject(sessionEntry *session, objectEntry *object);
-objectEntry * makeObjectFromCertificateRef(SecCertificateRef certRef, CK_OBJECT_CLASS class);
-objectEntry * makeObjectFromIdRef(SecIdentityRef idRef, CK_OBJECT_CLASS class);
-objectEntry * getObject(sessionEntry *session, CK_OBJECT_HANDLE hObject);
-CK_RV getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
-CK_RV getAttributeValuePublicKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
-CK_RV getAttributeValuePrivateKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
-void setDateFromASN1Time(const ASN1_TIME *aTime, char *out);
-int isCertDuplicated(sessionEntry *session, objectEntry *object);
-CK_RV findObjectsInitCertificate(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
-CK_RV findObjectsInitPrivateKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
-CK_RV findObjectsInitPublicKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
-void addObjectToSearchResults(sessionEntry *session, objectEntry *object);
-void freeObjectSearchList(sessionEntry *session);
-void removeObjectFromSearchResults(sessionEntry *session, objectEntry *object);
 #endif

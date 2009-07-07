@@ -8,9 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		692300820FF557160031A8B7 /* preferences.c in Sources */ = {isa = PBXBuildFile; fileRef = 692300800FF557160031A8B7 /* preferences.c */; };
-		6924E80C0FFC0A9A00907808 /* debug.h in Headers */ = {isa = PBXBuildFile; fileRef = 6924E80A0FFC0A9A00907808 /* debug.h */; };
 		6924E80D0FFC0A9A00907808 /* debug.c in Sources */ = {isa = PBXBuildFile; fileRef = 6924E80B0FFC0A9A00907808 /* debug.c */; };
 		6924E80E0FFC0A9A00907808 /* debug.c in Sources */ = {isa = PBXBuildFile; fileRef = 6924E80B0FFC0A9A00907808 /* debug.c */; };
+		697EEACF100397560063C91C /* support_funcs.c in Sources */ = {isa = PBXBuildFile; fileRef = 697EEACD100397560063C91C /* support_funcs.c */; };
+		697EEAD410039A880063C91C /* types.h in Headers */ = {isa = PBXBuildFile; fileRef = 697EEAD310039A880063C91C /* types.h */; };
 		6983BB8E0FF14B0B00FED01D /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6983BB8D0FF14B0B00FED01D /* Security.framework */; };
 		6983BC060FF14BDA00FED01D /* pkcs11.h in Headers */ = {isa = PBXBuildFile; fileRef = 6983BC050FF14BDA00FED01D /* pkcs11.h */; };
 		6983BC080FF14C6C00FED01D /* pkcs11f.h in Headers */ = {isa = PBXBuildFile; fileRef = 6983BC070FF14C6C00FED01D /* pkcs11f.h */; };
@@ -26,6 +27,10 @@
 		692302C20FF925BB0031A8B7 /* README */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
 		6924E80A0FFC0A9A00907808 /* debug.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = debug.h; sourceTree = "<group>"; };
 		6924E80B0FFC0A9A00907808 /* debug.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = debug.c; sourceTree = "<group>"; };
+		697EEACC100397560063C91C /* support_funcs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = support_funcs.h; sourceTree = "<group>"; };
+		697EEACD100397560063C91C /* support_funcs.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = support_funcs.c; sourceTree = "<group>"; };
+		697EEAD310039A880063C91C /* types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = types.h; sourceTree = "<group>"; };
+		697EEADA10039CA20063C91C /* constants.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = constants.h; sourceTree = "<group>"; };
 		6983BB560FEFED9C00FED01D /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = /System/Library/Frameworks/CoreFoundation.framework; sourceTree = "<absolute>"; };
 		6983BB5B0FEFEDAE00FED01D /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = /System/Library/Frameworks/Security.framework; sourceTree = "<absolute>"; };
 		6983BB7B0FF008B100FED01D /* keychain_pkcs11.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = keychain_pkcs11.h; sourceTree = "<group>"; };
@@ -88,6 +93,10 @@
 				692300800FF557160031A8B7 /* preferences.c */,
 				6924E80A0FFC0A9A00907808 /* debug.h */,
 				6924E80B0FFC0A9A00907808 /* debug.c */,
+				697EEACC100397560063C91C /* support_funcs.h */,
+				697EEACD100397560063C91C /* support_funcs.c */,
+				697EEAD310039A880063C91C /* types.h */,
+				697EEADA10039CA20063C91C /* constants.h */,
 			);
 			name = Source;
 			sourceTree = "<group>";
@@ -130,7 +139,7 @@
 				6983BC060FF14BDA00FED01D /* pkcs11.h in Headers */,
 				6983BC080FF14C6C00FED01D /* pkcs11f.h in Headers */,
 				6983BCB90FF14C9500FED01D /* pkcs11t.h in Headers */,
-				6924E80C0FFC0A9A00907808 /* debug.h in Headers */,
+				697EEAD410039A880063C91C /* types.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -196,6 +205,7 @@
 				6983BDC80FF2768100FED01D /* keychain_pkcs11.c in Sources */,
 				692300820FF557160031A8B7 /* preferences.c in Sources */,
 				6924E80D0FFC0A9A00907808 /* debug.c in Sources */,
+				697EEACF100397560063C91C /* support_funcs.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

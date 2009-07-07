@@ -15,6 +15,10 @@
 
 #include "mypkcs11.h"
 
+#define DEBUG 1
+#define DEBUG_LEVEL 10
+
+
 void debug(int level, const char* format, ...);
 const char * getCKRName(CK_RV rv);
 char *hexify(unsigned char *data, int len);

@@ -133,3 +133,20 @@ const char * getCKRName(CK_RV rv) {
             return "";
     }
 }
+
+
+void
+debug(int level, const char *format, ...) {
+#ifdef DEBUG 
+    va_list args;
+    
+    if (level > DEBUG_LEVEL)
+        return;
+    
+    va_start(args, format);
+    vfprintf(stderr, format, args);
+    va_end(args);
+#else
+    /* empty */
+#endif
+}

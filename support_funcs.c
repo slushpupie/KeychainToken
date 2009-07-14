@@ -393,6 +393,13 @@ makeObjectFromIdRef(SecIdentityRef idRef, CK_OBJECT_CLASS class)
             return object;
             
         case CKO_PRIVATE_KEY:
+            object->storage.certificate.x509 = d2i_X509(NULL, (void *) &pData, certData.Length);
+            if(!object->storage.certificate.x509) {
+                debug(1,"OpenSSL failed to parse certificate\n");
+                free(object);
+                return NULL;
+            }
+            
             status = SecIdentityCopyPrivateKey(idRef, &(object->storage.privateKey.keyRef));
             if (status != 0) {
                 free(object);
@@ -403,6 +410,7 @@ makeObjectFromIdRef(SecIdentityRef idRef, CK_OBJECT_CLASS class)
             memcpy(object->storage.privateKey.keyId,digest,SHA_DIGEST_LENGTH);
             CFRetain(object->storage.privateKey.keyRef);
             CFRetain(object->storage.privateKey.idRef);
+        
             return object;
             
     }
@@ -501,6 +509,7 @@ CK_RV
 getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount) 
 {
     CK_ULONG i = 0;
+    CK_RV rv = CKR_OK;
     CSSM_DATA certData;
     unsigned char *pData;
     OSStatus status = 0;
@@ -524,8 +533,10 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                     if (pTemplate[i].ulValueLen >= sizeof(object->class)) {
                         memcpy(pTemplate[i].pValue, &object->class, sizeof(object->class));
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
+                } else {
+                    debug(1,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = sizeof(object->class);
                 break;
@@ -537,8 +548,10 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                     if (pTemplate[i].ulValueLen >= sizeof(CK_BBOOL)) {
                         memcpy(pTemplate[i].pValue, &t, sizeof(CK_BBOOL));
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
+                } else {
+                    debug(1,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = sizeof(CK_BBOOL);
                 break;
@@ -550,8 +563,10 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                     if (pTemplate[i].ulValueLen >= sizeof(CK_BBOOL)) {
                         memcpy(pTemplate[i].pValue, &f, sizeof(CK_BBOOL));
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
+                } else {
+                    debug(1,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = sizeof(CK_BBOOL);
                 break;
@@ -563,8 +578,10 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                     if (pTemplate[i].ulValueLen >= sizeof(CK_BBOOL)) {
                         memcpy(pTemplate[i].pValue, &f, sizeof(CK_BBOOL));
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
+                } else {
+                    debug(1,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = sizeof(CK_BBOOL);
                 break;
@@ -578,13 +595,15 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                 
                 n = strlen(sn);
                 if (pTemplate[i].pValue != NULL) {
-                    if (pTemplate[i].ulValueLen >= n-1) {
-                        memcpy(pTemplate[i].pValue, sn, n-1); /*not null terminated*/
+                    if (pTemplate[i].ulValueLen >= n) {
+                        memcpy(pTemplate[i].pValue, sn, n); /*not null terminated*/
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
+                } else {
+                    debug(1,"    sizerequest\n");
                 }
-                pTemplate[i].ulValueLen = n-1;
+                pTemplate[i].ulValueLen = n;
             }
                 break;
                 
@@ -597,8 +616,10 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                         CK_CERTIFICATE_TYPE certType = CKC_X_509;
                         memcpy(pTemplate[i].pValue, &certType, sizeof(CK_CERTIFICATE_TYPE));
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
+                } else {
+                    debug(1,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = sizeof(CK_CERTIFICATE_TYPE);
                 break;
@@ -611,8 +632,10 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                             CK_BBOOL trusted = CK_TRUE;
                             memcpy(pTemplate[i].pValue, &trusted, sizeof(CK_BBOOL));
                         } else {
-                            return CKR_BUFFER_TOO_SMALL;
+                            rv = CKR_BUFFER_TOO_SMALL;
                         }
+                    } else {
+                        debug(1,"    sizerequest\n");
                     }
                     pTemplate[i].ulValueLen = sizeof(CK_ULONG);
                 }
@@ -632,8 +655,10 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                             CK_ULONG certCat = 1;
                             memcpy(pTemplate[i].pValue, &certCat, sizeof(CK_ULONG));
                         } else {
-                            return CKR_BUFFER_TOO_SMALL;
+                            rv = CKR_BUFFER_TOO_SMALL;
                         }
+                    } else {
+                        debug(1,"    sizerequest\n");
                     }
                     pTemplate[i].ulValueLen = sizeof(CK_ULONG);
                 }
@@ -652,8 +677,10 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                     if(pTemplate[i].ulValueLen >= 3) {
                         memcpy(pTemplate[i].pValue, object->storage.certificate.keyId, 3);
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
+                } else {
+                    debug(1,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = 3;
                 break;
@@ -664,8 +691,10 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                     if(pTemplate[i].ulValueLen >= 8) {
                         setDateFromASN1Time(object->storage.certificate.x509->cert_info->validity->notBefore, pTemplate[i].pValue);
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
+                } else {
+                    debug(1,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = 8;
                 break;
@@ -676,8 +705,10 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                     if(pTemplate[i].ulValueLen >= 8) {
                         setDateFromASN1Time(object->storage.certificate.x509->cert_info->validity->notAfter, pTemplate[i].pValue);
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
+                } else {
+                    debug(1,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = 8;
                 break;
@@ -691,8 +722,10 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                     if (pTemplate[i].ulValueLen >= n) {
                         n = i2d_X509_NAME(object->storage.certificate.x509->cert_info->subject, (unsigned char **) &(pTemplate[i].pValue));
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
+                } else {
+                    debug(1,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = n;
                 
@@ -706,8 +739,10 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                         debug(1,"     %s\n",hexify(object->storage.certificate.keyId, SHA_DIGEST_LENGTH));
                         memcpy(pTemplate[i].pValue, &object->storage.certificate.keyId, SHA_DIGEST_LENGTH);
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
+                } else {
+                    debug(1,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = SHA_DIGEST_LENGTH;
                 
@@ -722,8 +757,10 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                     if (pTemplate[i].ulValueLen >= n) {
                         n = i2d_X509_NAME(object->storage.certificate.x509->cert_info->issuer, (unsigned char **) &(pTemplate[i].pValue));
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
+                } else {
+                    debug(1,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = n;
                 
@@ -738,8 +775,10 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                     if (pTemplate[i].ulValueLen >= n) {
                         n = i2d_ASN1_INTEGER(object->storage.certificate.x509->cert_info->serialNumber, (unsigned char **) &(pTemplate[i].pValue));
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
+                } else {
+                    debug(1,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = n;
                 
@@ -751,8 +790,10 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                     if (pTemplate[i].ulValueLen >= certData.Length) {
                         memcpy(pTemplate[i].pValue, certData.Data, certData.Length);
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
+                } else {
+                    debug(1,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = certData.Length;
                 
@@ -763,21 +804,21 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                 debug(1,"  CKA_URL\n");
                 /* RFC2279 string of the URL where certificate can be obtained */
                 if (object->class != CKO_CERTIFICATE) {
-                    return CKR_ATTRIBUTE_TYPE_INVALID;
+                    rv = CKR_ATTRIBUTE_TYPE_INVALID;
                 }
                 
             case CKA_HASH_OF_SUBJECT_PUBLIC_KEY:
                 debug(1,"  CKA_HASH_OF_SUBJECT_PUBLIC_KEY\n");
                 /* SHA-1 hash of the subject public key */
                 if (object->class != CKO_CERTIFICATE) {
-                    return CKR_ATTRIBUTE_TYPE_INVALID;
+                    rv = CKR_ATTRIBUTE_TYPE_INVALID;
                 }
                 
             case CKA_HASH_OF_ISSUER_PUBLIC_KEY:
                 debug(1,"  CKA_HASH_OF_ISSUER_PUBLIC_KEY\n");
                 /* SHA-1 hash of the issuer public key */
                 if (object->class != CKO_CERTIFICATE) {
-                    return CKR_ATTRIBUTE_TYPE_INVALID;
+                    rv = CKR_ATTRIBUTE_TYPE_INVALID;
                 }
                 
             case CKA_JAVA_MIDP_SECURITY_DOMAIN:
@@ -789,22 +830,30 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                  * 3 = 3rd party
                  */
                 if (object->class != CKO_CERTIFICATE) {
-                    return CKR_ATTRIBUTE_TYPE_INVALID;
+                    rv = CKR_ATTRIBUTE_TYPE_INVALID;
                 }
                 
+            case CKA_NSS_EMAIL:
+                debug(1,"  CKA_NSS_EMAIL\n");
+                /* Not supported */
+                pTemplate[i].ulValueLen = -1;
+                break;
+                
             default:
-                debug(1,"Unknown CKO_CERTIFICATE attribute requested: 0x%X\n", pTemplate[i].type);
-                return CKR_ATTRIBUTE_TYPE_INVALID;
+                debug(1,"Unknown CKO_CERTIFICATE attribute requested: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
+                rv = CKR_ATTRIBUTE_TYPE_INVALID;
                 
         }
     }
-    return CKR_OK;
+    return rv;
 }
 
 CK_RV
 getAttributeValuePublicKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount)
 {
+    /*TODO: Many of the attributes can be obtained from the CSSM Key: cssmKey->KeyHeader->KeyAttr,KeyUsage,etc */
     CK_ULONG i = 0;
+    CK_RV rv = CKR_OK;
     
     for (i = 0 ; i < ulCount; i++) {
         switch (pTemplate[i].type) {
@@ -813,7 +862,7 @@ getAttributeValuePublicKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_U
                     if (pTemplate[i].ulValueLen >= sizeof(object->class)) {
                         memcpy(pTemplate[i].pValue, &object->class, sizeof(object->class));
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
                 }
                 pTemplate[i].ulValueLen = sizeof(object->class);
@@ -833,7 +882,7 @@ getAttributeValuePublicKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_U
                     if (pTemplate[i].ulValueLen >= sizeof(CK_KEY_TYPE)) {
                         memcpy(pTemplate[i].pValue, &keyType, sizeof(CK_KEY_TYPE));
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
                 }
                 pTemplate[i].ulValueLen = sizeof(CK_KEY_TYPE);
@@ -846,7 +895,7 @@ getAttributeValuePublicKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_U
                         debug(1,"     %s\n",hexify(object->storage.publicKey.keyId, SHA_DIGEST_LENGTH));
                         memcpy(pTemplate[i].pValue, &object->storage.publicKey.keyId, SHA_DIGEST_LENGTH);
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
                 }
                 pTemplate[i].ulValueLen = SHA_DIGEST_LENGTH;
@@ -864,7 +913,7 @@ getAttributeValuePublicKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_U
                     if (pTemplate[i].ulValueLen >= sizeof(CK_BBOOL)) {
                         memcpy(pTemplate[i].pValue, &f, sizeof(CK_BBOOL));
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
                 }
                 pTemplate[i].ulValueLen = sizeof(CK_BBOOL);
@@ -877,7 +926,7 @@ getAttributeValuePublicKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_U
                     if (pTemplate[i].ulValueLen >= sizeof(CK_BBOOL)) {
                         memcpy(pTemplate[i].pValue, &t, sizeof(CK_BBOOL));
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
                 }
                 pTemplate[i].ulValueLen = sizeof(CK_BBOOL);
@@ -922,29 +971,86 @@ getAttributeValuePublicKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_U
                  * be wrapped. 
                  */
                 break;
+                
+            case CKA_MODULUS:
+            {
+                CK_ULONG len = 0;
+                EVP_PKEY *rsa = NULL;
+                rsa = X509_get_pubkey(object->storage.publicKey.x509);
+                
+                
+                len = BN_num_bytes(rsa->pkey.rsa->n);
+                if(pTemplate[i].pValue != NULL) {
+                    if(pTemplate[i].ulValueLen >= len) {
+                        len = BN_bn2bin(rsa->pkey.rsa->n, (unsigned char *) pTemplate[i].pValue);
+                    } else {
+                        rv = CKR_BUFFER_TOO_SMALL;
+                    }
+                } 
+                pTemplate[i].ulValueLen = len;
+            }         
+                break;
+            case CKA_MODULUS_BITS: 
+            {
+                CK_ULONG len = 0;
+                EVP_PKEY *rsa = NULL;
+                rsa = X509_get_pubkey(object->storage.publicKey.x509);
+                
+                len = BN_num_bits(rsa->pkey.rsa->n);
+                if(pTemplate[i].pValue != NULL) {
+                    if(pTemplate[i].ulValueLen >= sizeof(CK_ULONG)) {
+                        memcpy(pTemplate[i].pValue, &len, sizeof(CK_ULONG));
+                        
+                    } else {
+                        rv = CKR_BUFFER_TOO_SMALL;
+                    }
+                } 
+                pTemplate[i].ulValueLen = sizeof(CK_ULONG);
+            }
+                break;
+            case CKA_PUBLIC_EXPONENT: 
+            {
+                CK_ULONG len = 0;
+                EVP_PKEY *rsa = NULL;
+                rsa = X509_get_pubkey(object->storage.publicKey.x509);
+                
+                len = BN_num_bits(rsa->pkey.rsa->e);
+                if(pTemplate[i].pValue != NULL) {
+                    if(pTemplate[i].ulValueLen >= len) {
+                        len = BN_bn2bin(rsa->pkey.rsa->e, (unsigned char *) pTemplate[i].pValue);
+                    } else {
+                        rv = CKR_BUFFER_TOO_SMALL;
+                    }
+                } 
+                pTemplate[i].ulValueLen = len;
+            }         
+                break;    
             default:
-                debug(1,"Unknown CKO_PUBLIC_KEY attribute requested: 0x%X\n", pTemplate[i].type);
-                return CKR_ATTRIBUTE_TYPE_INVALID;
+                debug(1,"Unknown CKO_PUBLIC_KEY attribute requested: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
+                rv = CKR_ATTRIBUTE_TYPE_INVALID;
                 
                 
         }
     }
-    return CKR_ATTRIBUTE_TYPE_INVALID;
+    return rv;
 }
 
 CK_RV
 getAttributeValuePrivateKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount) 
 {
+    /*TODO: Many of the attributes can be obtained from the CSSM Key: cssmKey->KeyHeader->KeyAttr,KeyUsage,etc */
     CK_ULONG i = 0;
+    CK_RV rv = CKR_OK;
     
     for (i = 0 ; i < ulCount; i++) {
+        debug(1,"  %s (0x%X)\n",getCKAName(pTemplate[i].type), pTemplate[i].type);
         switch (pTemplate[i].type) {
             case CKA_CLASS:
                 if (pTemplate[i].pValue != NULL) {
                     if (pTemplate[i].ulValueLen >= sizeof(object->class)) {
                         memcpy(pTemplate[i].pValue, &object->class, sizeof(object->class));
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
                 }
                 pTemplate[i].ulValueLen = sizeof(object->class);
@@ -964,7 +1070,7 @@ getAttributeValuePrivateKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_
                     if (pTemplate[i].ulValueLen >= sizeof(CK_KEY_TYPE)) {
                         memcpy(pTemplate[i].pValue, &keyType, sizeof(CK_KEY_TYPE));
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
                 }
                 pTemplate[i].ulValueLen = sizeof(CK_KEY_TYPE);
@@ -977,7 +1083,7 @@ getAttributeValuePrivateKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_
                         debug(1,"     %s\n",hexify(object->storage.privateKey.keyId, SHA_DIGEST_LENGTH));
                         memcpy(pTemplate[i].pValue, &object->storage.privateKey.keyId, SHA_DIGEST_LENGTH);
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
                 }
                 pTemplate[i].ulValueLen = SHA_DIGEST_LENGTH;
@@ -998,7 +1104,7 @@ getAttributeValuePrivateKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_
                     if (pTemplate[i].ulValueLen >= sizeof(CK_BBOOL)) {
                         memcpy(pTemplate[i].pValue, &f, sizeof(CK_BBOOL));
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
                 }
                 pTemplate[i].ulValueLen = sizeof(CK_BBOOL);
@@ -1012,7 +1118,7 @@ getAttributeValuePrivateKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_
                     if (pTemplate[i].ulValueLen >= sizeof(CK_BBOOL)) {
                         memcpy(pTemplate[i].pValue, &t, sizeof(CK_BBOOL));
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
                 }
                 pTemplate[i].ulValueLen = sizeof(CK_BBOOL);
@@ -1058,7 +1164,7 @@ getAttributeValuePrivateKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_
                     if (pTemplate[i].ulValueLen >= sizeof(CK_BBOOL)) {
                         memcpy(pTemplate[i].pValue, &f, sizeof(CK_BBOOL));
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
                 }
                 pTemplate[i].ulValueLen = sizeof(CK_BBOOL);
@@ -1077,7 +1183,7 @@ getAttributeValuePrivateKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_
                     if (pTemplate[i].ulValueLen >= sizeof(CK_BBOOL)) {
                         memcpy(pTemplate[i].pValue, &t, sizeof(CK_BBOOL));
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
                 }
                 pTemplate[i].ulValueLen = sizeof(CK_BBOOL);
@@ -1091,7 +1197,7 @@ getAttributeValuePrivateKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_
                     if (pTemplate[i].ulValueLen >= sizeof(CK_BBOOL)) {
                         memcpy(pTemplate[i].pValue, &f, sizeof(CK_BBOOL));
                     } else {
-                        return CKR_BUFFER_TOO_SMALL;
+                        rv = CKR_BUFFER_TOO_SMALL;
                     }
                 }
                 pTemplate[i].ulValueLen = sizeof(CK_BBOOL);
@@ -1107,13 +1213,66 @@ getAttributeValuePrivateKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_
                 /* true if the user must enter a pin for each use of this key */
                 break;
                 
+            case CKA_MODULUS:
+            {
+                CK_ULONG len = 0;
+                EVP_PKEY *rsa = NULL;
+                rsa = X509_get_pubkey(object->storage.privateKey.x509);
+                
+                
+                len = BN_num_bytes(rsa->pkey.rsa->n);
+                if(pTemplate[i].pValue != NULL) {
+                    if(pTemplate[i].ulValueLen >= len) {
+                        len = BN_bn2bin(rsa->pkey.rsa->n, (unsigned char *) pTemplate[i].pValue);
+                    } else {
+                        rv = CKR_BUFFER_TOO_SMALL;
+                    }
+                } 
+                pTemplate[i].ulValueLen = len;
+            }         
+                break;
+            case CKA_MODULUS_BITS: 
+            {
+                CK_ULONG len = 0;
+                EVP_PKEY *rsa = NULL;
+                rsa = X509_get_pubkey(object->storage.privateKey.x509);
+                
+                len = BN_num_bits(rsa->pkey.rsa->n);
+                if(pTemplate[i].pValue != NULL) {
+                    if(pTemplate[i].ulValueLen >= sizeof(CK_ULONG)) {
+                        memcpy(pTemplate[i].pValue, &len, sizeof(CK_ULONG));
+                            
+                    } else {
+                        rv = CKR_BUFFER_TOO_SMALL;
+                    }
+                } 
+                pTemplate[i].ulValueLen = sizeof(CK_ULONG);
+            }
+                break;
+            case CKA_PUBLIC_EXPONENT: 
+            {
+                CK_ULONG len = 0;
+                EVP_PKEY *rsa = NULL;
+                rsa = X509_get_pubkey(object->storage.privateKey.x509);
+                
+                len = BN_num_bits(rsa->pkey.rsa->e);
+                if(pTemplate[i].pValue != NULL) {
+                    if(pTemplate[i].ulValueLen >= len) {
+                        len = BN_bn2bin(rsa->pkey.rsa->e, (unsigned char *) pTemplate[i].pValue);
+                    } else {
+                        rv = CKR_BUFFER_TOO_SMALL;
+                    }
+                } 
+                pTemplate[i].ulValueLen = len;
+            }         
+                break;
             default:
-                debug(1,"Unknown CKO_PUBLIC_KEY attribute requested: 0x%X\n", pTemplate[i].type);
-                return CKR_ATTRIBUTE_TYPE_INVALID;
+                debug(1,"Unknown CKO_PUBLIC_KEY attribute requested: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
+                rv = CKR_ATTRIBUTE_TYPE_INVALID;
                 
         }
     }
-    return CKR_OK;
+    return rv;
 }
 
 CK_RV
@@ -1205,9 +1364,9 @@ findObjectsInitCertificate(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK
                 if (pTemplate[i].pValue != NULL) {
                     objectEntry *cur = session->objectList;
                     while(cur != NULL) {
-                        char sn[pTemplate[i].ulValueLen+1];
+                        char sn[pTemplate[i].ulValueLen];
                         
-                        X509_NAME_oneline(cur->storage.certificate.x509->cert_info->subject, sn, pTemplate[i].ulValueLen+1);
+                        X509_NAME_oneline(cur->storage.certificate.x509->cert_info->subject, sn, pTemplate[i].ulValueLen);
                         
                         if(strncmp(sn, pTemplate[i].pValue, pTemplate[i].ulValueLen) == 0) {
                             //keep this object
@@ -1477,7 +1636,7 @@ findObjectsInitCertificate(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK
                 break;
                 
             default:
-                debug(1,"Unknown CKO_CERTIFICATE attribute requested: 0x%X\n", pTemplate[i].type);
+                debug(1,"Unknown CKO_CERTIFICATE attribute requested: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
                 return CKR_ATTRIBUTE_TYPE_INVALID;
         }
     }
@@ -1709,7 +1868,7 @@ findObjectsInitPublicKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_U
                 break;
                 
             default:
-                debug(1,"Unknown CKO_PRIVATE_KEY attribute requested: 0x%X\n", pTemplate[i].type);
+                debug(1,"Unknown CKO_PRIVATE_KEY attribute requested: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
                 return CKR_ATTRIBUTE_TYPE_INVALID;
         }
     }
@@ -1804,9 +1963,9 @@ findObjectsInitPrivateKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_
                 if (pTemplate[i].pValue != NULL) {
                     objectEntry *cur = session->objectList;
                     while(cur != NULL) {
-                        char sn[pTemplate[i].ulValueLen+1];
+                        char sn[pTemplate[i].ulValueLen];
                         
-                        X509_NAME_oneline(cur->storage.privateKey.x509->cert_info->subject, sn, pTemplate[i].ulValueLen+1);
+                        X509_NAME_oneline(cur->storage.privateKey.x509->cert_info->subject, sn, pTemplate[i].ulValueLen);
                         
                         if(strncmp(sn, pTemplate[i].pValue, pTemplate[i].ulValueLen) == 0) {
                             //keep this object
@@ -1982,7 +2141,7 @@ findObjectsInitPrivateKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_
                 break;
                 
             default:
-                debug(1,"Unknown CKO_PRIVATE_KEY attribute requested: 0x%X\n", pTemplate[i].type);
+                debug(1,"Unknown CKO_PRIVATE_KEY attribute requested: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
                 return CKR_ATTRIBUTE_TYPE_INVALID;
         }
     }

@@ -18,6 +18,7 @@
 		6983BCB90FF14C9500FED01D /* pkcs11t.h in Headers */ = {isa = PBXBuildFile; fileRef = 6983BCB80FF14C9500FED01D /* pkcs11t.h */; };
 		6983BDC80FF2768100FED01D /* keychain_pkcs11.c in Sources */ = {isa = PBXBuildFile; fileRef = 6983BB7C0FF008B100FED01D /* keychain_pkcs11.c */; };
 		6983BDDA0FF2771D00FED01D /* pkcs11_test.c in Sources */ = {isa = PBXBuildFile; fileRef = 6983BDD20FF276EF00FED01D /* pkcs11_test.c */; };
+		69AA6EFC100B83C8004FAA10 /* pkcs11n.h in Headers */ = {isa = PBXBuildFile; fileRef = 69AA6EFB100B83C8004FAA10 /* pkcs11n.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -44,6 +45,7 @@
 		6983BDD10FF276EF00FED01D /* pkcs11_test.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pkcs11_test.h; sourceTree = "<group>"; };
 		6983BDD20FF276EF00FED01D /* pkcs11_test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = pkcs11_test.c; sourceTree = "<group>"; };
 		6983BDD60FF2770E00FED01D /* pkcs11_test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = pkcs11_test; sourceTree = BUILT_PRODUCTS_DIR; };
+		69AA6EFB100B83C8004FAA10 /* pkcs11n.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pkcs11n.h; sourceTree = "<group>"; };
 		C6A0FF2C0290799A04C91782 /* KeychainToken.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = KeychainToken.1; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -97,6 +99,7 @@
 				697EEACD100397560063C91C /* support_funcs.c */,
 				697EEAD310039A880063C91C /* types.h */,
 				697EEADA10039CA20063C91C /* constants.h */,
+				69AA6EFB100B83C8004FAA10 /* pkcs11n.h */,
 			);
 			name = Source;
 			sourceTree = "<group>";
@@ -140,6 +143,7 @@
 				6983BC080FF14C6C00FED01D /* pkcs11f.h in Headers */,
 				6983BCB90FF14C9500FED01D /* pkcs11t.h in Headers */,
 				697EEAD410039A880063C91C /* types.h in Headers */,
+				69AA6EFC100B83C8004FAA10 /* pkcs11n.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

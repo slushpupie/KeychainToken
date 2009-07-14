@@ -111,6 +111,7 @@ finalize(CK_VOID_PTR pReserved)
     }
     
     CSSM_Terminate();
+    initialized = false;
     
     return CKR_OK;
 }
@@ -257,10 +258,12 @@ getTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pTokenInfo)
         setString("Apple Computer", (char *)pTokenInfo->manufacturerID, 32);
         setString("Keychain", (char *)pTokenInfo->model, 16);
         setString(filename,  (char *)pTokenInfo->serialNumber, 16);
-        pTokenInfo->flags = CKF_WRITE_PROTECTED | CKF_TOKEN_INITIALIZED | CKF_USER_PIN_INITIALIZED | CKF_LOGIN_REQUIRED; //TODO Determine if keychain requires login
+        pTokenInfo->flags = CKF_WRITE_PROTECTED | CKF_TOKEN_INITIALIZED | CKF_USER_PIN_INITIALIZED; //TODO Determine if keychain requires login
         
         if(isKeychainGreylisted(keychainName)) {
             pTokenInfo->flags |= CKF_USER_PIN_LOCKED | CKF_SO_PIN_LOCKED;
+        } else { 
+            pTokenInfo->flags |= CKF_LOGIN_REQUIRED;
         }
         
         pTokenInfo->ulMaxSessionCount = CK_EFFECTIVELY_INFINITE;
@@ -296,6 +299,17 @@ getTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pTokenInfo)
 CK_RV
 waitForSlotEvent(CK_FLAGS flags, CK_SLOT_ID_PTR pSlot, CK_VOID_PTR pReserved) 
 {
+    /* Since these are not tokens in the traditional sense, they cannot be inserted/removed
+     * from a slot.  Thus, if CKF_DONT_BLOCK is called, all we do is return. Otherwise, 
+     * We are supposed to wait for a token insert/removal event that will never happen; so
+     * we essentially block forever. :-(
+     */
+    if(flags & CKF_DONT_BLOCK) {
+        return CKR_NO_EVENT; 
+    } else {
+        /* while(initialized) { sleep(1000); } */
+        return CKR_NO_EVENT;
+    }
     return unimplemented();
 }
 
@@ -629,6 +643,7 @@ getAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ATTRI
         case CKO_PRIVATE_KEY:
             return getAttributeValuePrivateKey(object, pTemplate, ulCount);
         default:
+            debug(1,"This object class is %s\n",getCKOName(object->class));
             /* This should never happen, since we dont create objects besides what
              * we know how to handle.
              */
@@ -690,12 +705,13 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
         if(object != NULL && !isCertDuplicated(session, object)) {
             count++;
             addObject(session,object);
-            
+            /*
             object = makeObjectFromIdRef(idRef, CKO_PUBLIC_KEY);
             if(object != NULL) {
                 count++;
                 addObject(session,object);
             }
+            */
             object = makeObjectFromIdRef(idRef, CKO_PRIVATE_KEY);
             if(object != NULL) {
                 count++;
@@ -733,12 +749,13 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
         if(object != NULL && !isCertDuplicated(session, object)) {
             count++;
             addObject(session,object);
-            
+            /*
             object = makeObjectFromCertificateRef((SecCertificateRef) itemRef, CKO_PUBLIC_KEY);
             if(object != NULL) {
                 count++;
                 addObject(session, object);
             }
+            */
         }    
         status = SecKeychainSearchCopyNext(kcSearchReference, &itemRef);
     }
@@ -808,17 +825,20 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
                 case CKO_DOMAIN_PARAMETERS:
                 case CKO_MECHANISM:
                 case CKO_OTP_KEY:
-                    debug(1,"unsupported object of type 0x%X\n", class);
+                case CKO_NSS_BUILTIN_ROOT_LIST:
+                case CKO_NSS_CRL:
+                case CKO_NETSCAPE_TRUST:
+                    debug(1,"unsupported object of type 0x%X (%s)\n", class, getCKOName(class));
                     break;
                 default:
-                    debug(1,"unknown object of type 0x%X\n", class);
+                    debug(1,"unknown object of type 0x%X (%s)\n", class, getCKOName(class));
                     if(mutex.use) {
                         mutex.UnlockMutex(session->myMutex);
                     }
                     return CKR_ATTRIBUTE_TYPE_INVALID;
             }
         } else {
-            debug(1,"Requested attribute: 0x%X\n", pTemplate[i].type);
+            debug(1,"Requested attribute: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
             
         }
     }
@@ -919,9 +939,8 @@ decryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_H
         return CKR_OBJECT_HANDLE_INVALID;
     }
     
-    if(session->decryptContext != NULL) {
-        CSSM_DeleteContext(*(session->decryptContext));
-    }
+        CSSM_DeleteContext(session->decryptContext);
+    
     
     if(!session->loggedIn) {
         return CKR_USER_NOT_LOGGED_IN;
@@ -949,7 +968,7 @@ decryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_H
     }
     
     
-    status = CSSM_CSP_CreateAsymmetricContext(cspHandle, CSSM_ALGID_RSA, cssmCreds, cssmKey, CSSM_PADDING_PKCS1, session->decryptContext);
+    status = CSSM_CSP_CreateAsymmetricContext(cspHandle, CSSM_ALGID_RSA, cssmCreds, cssmKey, CSSM_PADDING_PKCS1, &(session->decryptContext));
     if(ret != 0) {
         cssmPerror("CreateAsymmetricContext", status);
         returnVal = CKR_GENERAL_ERROR;
@@ -981,29 +1000,35 @@ decrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BY
         return CKR_USER_NOT_LOGGED_IN;
     }
     
-       
+    /*
     if(session->decryptContext == NULL) {
         return CKR_OPERATION_NOT_INITIALIZED;
     }
+     */
     
     input.Data = pData;
     input.Length = ulDataLen;
     
     output.Data = pDecryptedData;
-    output.Length = 0;
+    output.Length = *(pulDecryptedDataLen);
     
-    status = CSSM_DecryptData(*(session->decryptContext), &output, 1, &input, 1, &bytesDecrypted, &extra);
+    status = CSSM_DecryptData(session->decryptContext, &output, 1, &input, 1, &bytesDecrypted, &extra);
     if(status != 0) {
-        cssmPerror("DecryptData",status);
-        ret = CKR_GENERAL_ERROR;
-        goto cleanup;
+        if (status == CSSMERR_CSP_OUTPUT_LENGTH_ERROR) {
+            /* dont delete the context yet */
+            return CKR_BUFFER_TOO_SMALL; 
+        } else {
+            cssmPerror("DecryptData",status);
+            ret = CKR_GENERAL_ERROR;
+            goto cleanup;
+        }
+        
     }
     
     *pulDecryptedDataLen = output.Length;
     
 cleanup:
-    CSSM_DeleteContext(*(session->decryptContext));
-    session->decryptContext = NULL;
+    CSSM_DeleteContext(session->decryptContext);
     
     
     
@@ -1022,7 +1047,10 @@ signInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HAND
     const CSSM_ACCESS_CREDENTIALS *cssmCreds = NULL;
     const CSSM_KEY *cssmKey = NULL;
     CSSM_ALGORITHMS algorithmID = CSSM_ALGID_NONE;
-    SecKeyRef keyRef = 0;
+    CSSM_VERSION cmVersion;
+    CSSM_GUID cmGUID;
+    CSSM_PVC_MODE cmPvcPolicy;
+    SecKeychainRef keychainRef;
     
     session = findSessionEntry(hSession);
     if(session == NULL) {
@@ -1034,50 +1062,21 @@ signInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HAND
         return CKR_OBJECT_HANDLE_INVALID;
     }
     
-    if(session->signContext != NULL) {
-        CSSM_DeleteContext(*(session->signContext));
-    }
+
+    CSSM_DeleteContext(session->signContext);
+    
     
     
     if(!session->loggedIn) {
         return CKR_USER_NOT_LOGGED_IN;
     }
     
-    status = SecKeychainGetCSPHandle(keychainSlots[session->slot], &cspHandle);
-    if (status != 0) {
-        debug(1,"Error in SecKeychainGetCSPHandle\n");
-        returnVal = CKR_GENERAL_ERROR;
+    if (object->class != CKO_PRIVATE_KEY) {
+        debug(1,"Object specified is not a private key\n");
+        returnVal = CKR_KEY_HANDLE_INVALID;
         goto cleanup;
     }
-        
-    switch (object->class) {
-        case CKO_PUBLIC_KEY:
-            keyRef = object->storage.publicKey.keyRef;
-            break;
-        case CKO_PRIVATE_KEY:
-            keyRef = object->storage.privateKey.keyRef;
-            break;
-            
-        default:
-            debug(1,"Object specified is not a key\n");
-            returnVal = CKR_KEY_HANDLE_INVALID;
-            goto cleanup;
-    }
-    
-    status = SecKeyGetCSSMKey(keyRef, &cssmKey);
-    if (status != 0) {
-        debug(1,"Error getting CSSMKey (status = %d)\n", status);
-        returnVal = CKR_GENERAL_ERROR;
-        goto cleanup;
-    }
-    status = SecKeyGetCredentials(keyRef, CSSM_ACL_AUTHORIZATION_SIGN, kSecCredentialTypeNoUI, &cssmCreds);
-    if (status != 0) {
-        debug(1,"Error in SecKeyGetCredentials (status = %d)\n", status);
-        returnVal = CKR_GENERAL_ERROR;
-        goto cleanup;
-    }
-    
-    
+
     switch (pMechanism->mechanism) {
         case CKM_RSA_PKCS:
         case CKM_RSA_9796:
@@ -1097,17 +1096,58 @@ signInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HAND
             algorithmID = CSSM_ALGID_SHA1WithDSA;
             break;
         default:
-            debug(1,"Mechanism specified that we dont know how to handle (yet?) 0x%X\n",pMechanism->mechanism);
+            debug(1,"Mechanism specified that we dont know how to handle (yet?) 0x%X (%s)\n",pMechanism->mechanism, getCKMName(pMechanism->mechanism));
             returnVal = CKR_MECHANISM_INVALID;
     }
-        
-    ret = CSSM_CSP_CreateSignatureContext(cspHandle, algorithmID, cssmCreds, cssmKey, session->signContext);
+
+
+    
+    cmPvcPolicy = CSSM_PVC_NONE;
+    cmVersion.Major = 2;
+    cmVersion.Minor = 0;    
+    
+    ret = CSSM_Init(&cmVersion, CSSM_PRIVILEGE_SCOPE_PROCESS, &cmGUID, CSSM_KEY_HIERARCHY_NONE, &cmPvcPolicy, (const void *)NULL);
+    if (ret != 0) {
+        cssmPerror("CSSM_Init", ret);
+        return CKR_GENERAL_ERROR;
+    }
+    
+    status = SecKeyGetCSSMKey(object->storage.privateKey.keyRef, &cssmKey);
+    if (status != 0) {
+        debug(1,"Error getting CSSMKey (status = %d)\n", status);
+        returnVal = CKR_GENERAL_ERROR;
+        goto cleanup;
+    }
+
+    status = SecKeychainItemCopyKeychain((SecKeychainItemRef)object->storage.privateKey.keyRef, &keychainRef);
+    if (status != 0) {
+        debug(1,"Error in SecKeychainItemCopyKeychain\n");
+        goto cleanup;
+    }
+
+
+    status = SecKeychainGetCSPHandle(keychainRef, &cspHandle);
+    if (status != 0) {
+        debug(1,"Error in SecKeychainGetCSPHandle\n");
+        returnVal = CKR_GENERAL_ERROR;
+        goto cleanup;
+    }
+
+
+    status = SecKeyGetCredentials(object->storage.privateKey.keyRef, CSSM_ACL_AUTHORIZATION_SIGN, kSecCredentialTypeNoUI, &cssmCreds);
+    if (status != 0) {
+        debug(1,"Error in SecKeyGetCredentials (status = %d)\n", status);
+        returnVal = CKR_GENERAL_ERROR;
+        goto cleanup;
+    }
+
+    ret = CSSM_CSP_CreateSignatureContext(cspHandle, algorithmID, cssmCreds, cssmKey, &(session->signContext));
     if (ret != 0) {
         cssmPerror("CSSM_CreateSignatureContext", ret);
         returnVal = CKR_GENERAL_ERROR;
         goto cleanup;
     }
-    
+        
 cleanup:
 
     return returnVal;
@@ -1132,28 +1172,34 @@ sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_
         return CKR_USER_NOT_LOGGED_IN;
     }
     
+    /*
     if(session->signContext == NULL) {
         return CKR_OPERATION_NOT_INITIALIZED;
     }
+     */
     
     input.Data = pData;
     input.Length = ulDataLen;
     
     output.Data = pSignature;
-    output.Length = 0;
+    output.Length = *(pulSignatureLen);
     
     
-    status = CSSM_SignData(*(session->signContext), &input, 1, CSSM_ALGID_NONE, &output);
+    status = CSSM_SignData(session->signContext, &input, 1, CSSM_ALGID_NONE, &output);
     if(status != 0) {
-        cssmPerror("SignData",status);
-        ret = CKR_GENERAL_ERROR;
+        if(status == CSSMERR_CSP_OUTPUT_LENGTH_ERROR) {
+            /* dont delete the context yet */
+            return CKR_BUFFER_TOO_SMALL;
+        } else {
+            cssmPerror("SignData",status);
+            ret = CKR_GENERAL_ERROR;
+        }
     }
     
     *pulSignatureLen = output.Length;
     
     
-    CSSM_DeleteContext(*(session->signContext));
-    session->signContext = NULL;
+    CSSM_DeleteContext(session->signContext);
 
     
     return ret;

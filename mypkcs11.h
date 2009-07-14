@@ -17,6 +17,7 @@
 #define CK_NULL_PTR 0
 
 #include "pkcs11.h"
+#include "pkcs11n.h"
 
 #endif
 

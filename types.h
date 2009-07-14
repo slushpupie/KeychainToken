@@ -76,8 +76,8 @@ typedef struct _sessionEntry {
     
     CK_ULONG keyIdCounter;
     
-    CSSM_CC_HANDLE  *decryptContext;
-    CSSM_CC_HANDLE  *signContext;
+    CSSM_CC_HANDLE  decryptContext;
+    CSSM_CC_HANDLE  signContext;
     
     
     CK_VOID_PTR myMutex;

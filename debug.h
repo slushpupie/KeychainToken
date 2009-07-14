@@ -20,7 +20,12 @@
 
 
 void debug(int level, const char* format, ...);
+
 const char * getCKRName(CK_RV rv);
+const char * getCKAName(CK_ATTRIBUTE_TYPE attrib);
+const char * getCKOName(CK_OBJECT_CLASS class);
+const char * getCKMName(CK_MECHANISM_TYPE mech);
+
 char *hexify(unsigned char *data, int len);
 char *stringify(unsigned char *str, int length);
 

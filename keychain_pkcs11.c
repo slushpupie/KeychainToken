@@ -923,11 +923,11 @@ decryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_H
     CSSM_RETURN ret = 0;
     CK_RV returnVal = CKR_OK;
     const CSSM_KEY *cssmKey = NULL;
+    CSSM_ALGORITHMS algorithmID = CSSM_ALGID_NONE;
+    CSSM_PADDING paddingID = CSSM_PADDING_NONE;
         
     CSSM_CSP_HANDLE cspHandle;
     const CSSM_ACCESS_CREDENTIALS *cssmCreds = NULL;
-
-
       
     session = findSessionEntry(hSession);
     if(session == NULL) {
@@ -945,6 +945,20 @@ decryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_H
     if(!session->loggedIn) {
         return CKR_USER_NOT_LOGGED_IN;
     }
+    
+    switch (pMechanism->mechanism) {
+        case CKM_RSA_PKCS:
+        case CKM_RSA_PKCS_OAEP:
+            paddingID   = CSSM_PADDING_PKCS1;
+        case CKM_RSA_X_509:       
+            algorithmID = CSSM_ALGID_RSA;
+            break;
+        default:
+            debug(1,"Mechanism specified that we dont know how to handle (yet?) 0x%X (%s)\n",pMechanism->mechanism, getCKMName(pMechanism->mechanism));
+            returnVal = CKR_MECHANISM_INVALID;
+    }
+    
+    
     
     status = SecKeychainGetCSPHandle(keychainSlots[session->slot], &cspHandle);
     if (status != 0) {
@@ -968,7 +982,7 @@ decryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_H
     }
     
     
-    status = CSSM_CSP_CreateAsymmetricContext(cspHandle, CSSM_ALGID_RSA, cssmCreds, cssmKey, CSSM_PADDING_PKCS1, &(session->decryptContext));
+    status = CSSM_CSP_CreateAsymmetricContext(cspHandle, algorithmID, cssmCreds, cssmKey, paddingID, &(session->decryptContext));
     if(ret != 0) {
         cssmPerror("CreateAsymmetricContext", status);
         returnVal = CKR_GENERAL_ERROR;
@@ -1009,14 +1023,28 @@ decrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BY
     input.Data = pData;
     input.Length = ulDataLen;
     
-    output.Data = pDecryptedData;
-    output.Length = *(pulDecryptedDataLen);
+    if(pDecryptedData == NULL) {
+        /* output will be created by CSSM_DecryptData, we are 
+         * responsible for free'ing it when done
+         */
+        output.Data = NULL;
+        output.Length = 0;
+    } else {
+        output.Data = pDecryptedData;
+        output.Length = *(pulDecryptedDataLen);
+    }
     
     status = CSSM_DecryptData(session->decryptContext, &output, 1, &input, 1, &bytesDecrypted, &extra);
     if(status != 0) {
         if (status == CSSMERR_CSP_OUTPUT_LENGTH_ERROR) {
-            /* dont delete the context yet */
+             /* dont delete the context yet */
+            if(pDecryptedData == NULL && output.Data != NULL) {
+                free(output.Data);
+            }
             return CKR_BUFFER_TOO_SMALL; 
+        } else if (status == CSSMERR_CSP_INVALID_DATA) {
+            ret = CKR_DATA_INVALID;
+            goto cleanup;
         } else {
             cssmPerror("DecryptData",status);
             ret = CKR_GENERAL_ERROR;
@@ -1025,9 +1053,13 @@ decrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BY
         
     }
     
+    
     *pulDecryptedDataLen = output.Length;
     
 cleanup:
+    if(pDecryptedData == NULL) {
+        free(output.Data);
+    }
     CSSM_DeleteContext(session->decryptContext);
     
     
@@ -1079,21 +1111,8 @@ signInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HAND
 
     switch (pMechanism->mechanism) {
         case CKM_RSA_PKCS:
-        case CKM_RSA_9796:
         case CKM_RSA_X_509:    
             algorithmID = CSSM_ALGID_RSA;
-            break;
-        case CKM_MD2_RSA_PKCS:
-            algorithmID = CSSM_ALGID_MD2WithRSA;
-            break;
-        case CKM_MD5_RSA_PKCS:
-            algorithmID = CSSM_ALGID_MD5WithRSA;
-            break;
-        case CKM_DSA:
-            algorithmID = CSSM_ALGID_DSA;
-            break;
-        case CKM_DSA_SHA1:
-            algorithmID = CSSM_ALGID_SHA1WithDSA;
             break;
         default:
             debug(1,"Mechanism specified that we dont know how to handle (yet?) 0x%X (%s)\n",pMechanism->mechanism, getCKMName(pMechanism->mechanism));

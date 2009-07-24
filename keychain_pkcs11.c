@@ -1227,28 +1227,69 @@ sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_
 CK_RV
 seedRandom(CK_SESSION_HANDLE hSession ,CK_BYTE_PTR data,CK_ULONG dataLen)
 {
-    sessionEntry *session = NULL;
-
-    
-    
-    session = findSessionEntry(hSession);
-    if(session == NULL) {
-        return CKR_SESSION_HANDLE_INVALID;
-    }
-    
-    return unimplemented();
+    return CKR_RANDOM_SEED_NOT_SUPPORTED;
 }
 
 CK_RV
 generateRandom(CK_SESSION_HANDLE hSession ,CK_BYTE_PTR data,CK_ULONG dataLen) 
 {
     sessionEntry *session = NULL;
+    CSSM_CC_HANDLE randomHandle;
+    CSSM_DATA randomData;
+    OSStatus status = 0;
+
+    CSSM_RETURN ret = CSSM_OK;
+    CK_RV returnVal = CKR_OK;
+    CSSM_CSP_HANDLE cspHandle = 0;
+    CSSM_VERSION cmVersion;
+    CSSM_GUID cmGUID;
+    CSSM_PVC_MODE cmPvcPolicy;
     
     
     session = findSessionEntry(hSession);
     if(session == NULL) {
-        return CKR_SESSION_HANDLE_INVALID;
+        returnVal = CKR_SESSION_HANDLE_INVALID;
+        goto cleanup;
+    }
+   
+    cmPvcPolicy = CSSM_PVC_NONE;
+    cmVersion.Major = 2;
+    cmVersion.Minor = 0;    
+    
+    ret = CSSM_Init(&cmVersion, CSSM_PRIVILEGE_SCOPE_PROCESS, &cmGUID, CSSM_KEY_HIERARCHY_NONE, &cmPvcPolicy, (const void *)NULL);
+    if (ret != 0) {
+        cssmPerror("CSSM_Init", ret);
+        returnVal = CKR_GENERAL_ERROR;
+        goto cleanup;
     }
     
-    return unimplemented();
+    
+    status = SecKeychainGetCSPHandle(keychainSlots[session->slot], &cspHandle);
+    if (status != 0) {
+        debug(1,"Error in SecKeychainGetCSPHandle\n");
+        returnVal = CKR_GENERAL_ERROR;
+        goto cleanup;
+    }
+    
+    
+    ret = CSSM_CSP_CreateRandomGenContext(cspHandle, CKM_RSA_PKCS, NULL, dataLen, &randomHandle);
+    if (ret != 0) {
+        cssmPerror("CSSM_CSP_CreateRandomGenContext", ret);
+        returnVal = CKR_GENERAL_ERROR;
+        goto cleanup;
+    }
+    
+    randomData.Data = data;
+    randomData.Length = dataLen;
+    
+    ret = CSSM_GenerateRandom(randomHandle, &randomData);
+    if (ret != 0) {
+        cssmPerror("CSSM_GenerateRandom", ret);
+        returnVal = CKR_GENERAL_ERROR;
+        goto cleanup;
+    }
+    
+cleanup:
+    
+    return returnVal;
 }

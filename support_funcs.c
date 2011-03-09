@@ -155,25 +155,46 @@ removeSession(CK_SESSION_HANDLE hSession)
 }
 
 int
-isCertDuplicated(sessionEntry *session, objectEntry *object) 
+isDuplicated(sessionEntry *session, objectEntry *object) 
 {
     objectEntry *cur;
-    
+
     if(session->objectList == NULL) {
         return 0;
     }
     
     cur = session->objectList;
     while(cur->nextObject != NULL) {
-        if(cur->class == CKO_CERTIFICATE) {
-            if(cur->storage.certificate.certRef == object->storage.certificate.certRef) {
-                return 1;
+        if(cur->class == object->class) {
+            switch (object->class) {
+                case CKO_CERTIFICATE:
+                    if(cur->storage.certificate.certRef == object->storage.certificate.certRef)
+                        return 1;
+                    if(memcmp(cur->storage.certificate.keyId, object->storage.certificate.keyId,KEYID_SIZE) == 0)
+                        return 1;
+                    break;
+                case CKO_PUBLIC_KEY:
+                    if(cur->storage.publicKey.keyRef == object->storage.publicKey.keyRef)
+                        return 1;
+                    if(memcmp(cur->storage.publicKey.keyId, object->storage.publicKey.keyId,KEYID_SIZE) == 0)
+                        return 1;
+
+                    break;
+                case CKO_PRIVATE_KEY:
+                    if(cur->storage.privateKey.keyRef == object->storage.privateKey.keyRef)
+                        return 1;
+                    if(memcmp(cur->storage.privateKey.keyId, object->storage.privateKey.keyId,KEYID_SIZE) == 0)
+                        return 1;
+
+                    break;
             }
         }
         cur = cur->nextObject;
     }
     
-    return (cur->storage.certificate.certRef == object->storage.certificate.certRef);
+    return 0;
+    
+
 }
 
 void
@@ -257,17 +278,20 @@ freeObject(objectEntry *object)
         case CKO_DATA:
             break;
         case CKO_CERTIFICATE:
-            CFRelease(object->storage.certificate.certRef);
+            if(object->storage.certificate.certRef)
+                CFRelease(object->storage.certificate.certRef);
             if(object->storage.certificate.idRef)
                 CFRelease(object->storage.certificate.idRef);
             break;
         case CKO_PUBLIC_KEY:
-            CFRelease(object->storage.publicKey.keyRef);
+            if(object->storage.publicKey.keyRef)
+                CFRelease(object->storage.publicKey.keyRef);
             if(object->storage.publicKey.idRef)
                 CFRelease(object->storage.publicKey.idRef);
             break;
         case CKO_PRIVATE_KEY:
-            CFRelease(object->storage.privateKey.keyRef);
+            if(object->storage.privateKey.keyRef)
+                CFRelease(object->storage.privateKey.keyRef);
             if(object->storage.privateKey.idRef)
                 CFRelease(object->storage.privateKey.idRef);
             break;
@@ -279,26 +303,30 @@ freeObject(objectEntry *object)
             break;
             
     }
+    if(object->label.Data != NULL)
+        free(object->label.Data);
     free(object);
 }
 
 objectEntry *
-makeObjectFromCertificateRef(SecCertificateRef certRef, CK_OBJECT_CLASS class) 
+makeObjectFromCertificateRef(SecCertificateRef certRef, SecKeychainRef keychain, CK_OBJECT_CLASS class) 
 {
     objectEntry *object = NULL;
     OSStatus status;
-    CSSM_DATA certData;
-    unsigned char *pData;
-    unsigned char digest[SHA_DIGEST_LENGTH];
+    SecItemClass itemClass = 0;
+    SecKeychainAttributeList *attrList = NULL;
+    SecKeychainAttributeInfo *info = NULL;
+    UInt32 length = 0;
+	void *data = NULL;
+    int ix;
     
+    /*
     status = SecCertificateGetData(certRef, &certData);
     if (status != 0) {
         return NULL;
     }
     pData = certData.Data;
-    
-    SHA1(certData.Data, certData.Length, digest);
-    
+    */
     
     object = malloc(sizeof(objectEntry));
     if(!object) {
@@ -307,28 +335,91 @@ makeObjectFromCertificateRef(SecCertificateRef certRef, CK_OBJECT_CLASS class)
     memset(object, 0, sizeof(objectEntry));
     object->class = class;
     
+    
+    
+    /* Now get the AttributeInfo for it. */
+    status = SecKeychainAttributeInfoForItemID(keychain, itemClass, &info);
+    if (status) {
+        //TODO more specific errors
+        debug(DEBUG_VERBOSE,"unable to get AttributeInfo for keychain item\n");
+        free(object);
+        return NULL;
+    }
+    /* Copy the data out */
+    status = SecKeychainItemCopyAttributesAndData(certRef, info, &itemClass, &attrList,
+                                                  &length,
+                                                  &data);
+    if (status) {
+        //TODO more specific errors
+        debug(DEBUG_VERBOSE, "unable to copy attributes for keychain item\n");
+        free(object);
+        return NULL;
+        
+    }
+    if (info->count != attrList->count) {
+        //TODO more specific errors
+        //sec_error("info count: %ld != attribute count: %ld", info->count, attrList->count);
+        debug(DEBUG_VERBOSE, "the copied attributes dont match the original\n");
+        free(object);
+        return NULL;
+    }
+    
+    /* Find the right attribute to use for the keyId */
+    for (ix = 0; ix < info->count; ++ix) {
+        UInt32 tag = info->tag[ix];
+        SecKeychainAttribute *attribute = &attrList->attr[ix];
+        
+        if (tag != attribute->tag) {
+            //TODO more specific errors
+            //sec_error("attribute %d of %ld info tag: %ld != attribute tag: %ld", ix, info->count, tag, attribute->tag);
+            free(object);
+            return NULL;
+            
+        }
+        
+        if(tag == kSecPublicKeyHashItemAttr) {
+            int len = (attribute->length < KEYID_SIZE ? attribute->length : KEYID_SIZE);
+            if(class == CKO_CERTIFICATE)
+                memcpy(object->storage.certificate.keyId,attribute->data,len);
+            else if(class == CKO_PUBLIC_KEY)
+                memcpy(object->storage.publicKey.keyId,attribute->data,len);
+          
+        } 
+        if(tag == kSecLabelItemAttr) {
+            object->label.Length = malloc(attribute->length);
+            memcpy(object->label.Data, attribute->data, attribute->length);
+        }
+    }
+    //TODO What if object->storage.XXX.keyId == null now???
+    
+    //TODO free attributeList and data
+
+    
+    
+    X509 *cert = d2i_X509(NULL, data, length);
+    
+    
     switch(class) {
         case CKO_CERTIFICATE:
-            object->storage.certificate.x509 = d2i_X509(NULL, (void *) &pData, certData.Length);
+            object->storage.certificate.x509 = cert;
             if(!object->storage.certificate.x509) {
                 debug(DEBUG_IMPORTANT,"OpenSSL failed to parse certificate\n");
                 free(object);
                 return NULL;
             }
             object->storage.certificate.certRef = certRef;
-            memcpy(object->storage.certificate.keyId,digest,SHA_DIGEST_LENGTH);
             CFRetain(object->storage.certificate.certRef);
             return object;
             
         case CKO_PUBLIC_KEY:
             
+            object->storage.publicKey.pubKey = X509_get_pubkey(cert);
             
             status = SecCertificateCopyPublicKey(certRef, &(object->storage.publicKey.keyRef));
             if (status != 0) {
                 free(object);
                 return NULL;
             }
-			memcpy(object->storage.publicKey.keyId,digest,SHA_DIGEST_LENGTH);
             
             CFRetain(object->storage.publicKey.keyRef);
             return object;
@@ -338,6 +429,131 @@ makeObjectFromCertificateRef(SecCertificateRef certRef, CK_OBJECT_CLASS class)
     return NULL;
 }
 
+objectEntry *
+makeObjectFromKeyRef(SecKeyRef keyRef, SecKeychainRef keychain, CK_OBJECT_CLASS class) 
+{
+    objectEntry *object = NULL;
+    OSStatus status;
+    
+    SecItemClass itemClass = 0;
+    SecKeychainAttributeList *attrList = NULL;
+    SecKeychainAttributeInfo *info = NULL;
+    UInt32 length = 0;
+	void *data = NULL;
+    int ix;
+    CFDataRef outData = NULL;
+    
+    
+    object = malloc(sizeof(objectEntry));
+    if(!object) {
+        return NULL;
+    }
+    memset(object, 0, sizeof(objectEntry));
+    
+    object->class = class;    
+    
+    /* First find out the item class. */
+	status = SecKeychainItemCopyAttributesAndData(keyRef, NULL, &itemClass, NULL, NULL, NULL);
+	if (status) {
+		debug(DEBUG_VERBOSE, "SecKeychainItemCopyAttributesAndData (%d)\n", status);
+        freeObject(object);
+        return NULL;
+	}
+    
+    
+    /* Now get the AttributeInfo for it. */
+    status = SecKeychainAttributeInfoForItemID(keychain, itemClass, &info);
+    if (status) {
+        //TODO more specific errors
+        debug(DEBUG_VERBOSE,"unable to get AttributeInfo for keychain item (%d)\n", status);
+        freeObject(object);
+        return NULL;
+    }
+    /* Copy the data out */
+    status = SecKeychainItemCopyAttributesAndData(keyRef, info, &itemClass, &attrList,
+                                                  &length,
+                                                  &data);
+    if (status) {
+        //TODO more specific errors
+        debug(DEBUG_VERBOSE, "unable to copy attributes for keychain item (%d\n", status);
+        freeObject(object);
+        return NULL;
+        
+    }
+    if (info->count != attrList->count) {
+        //TODO more specific errors
+        //sec_error("info count: %ld != attribute count: %ld", info->count, attrList->count);
+        debug(DEBUG_VERBOSE, "the copied attributes dont match the original\n");
+        freeObject(object);
+        return NULL;
+    }
+    
+    /* Find the right attribute to use for the keyId */
+    for (ix = 0; ix < info->count; ++ix) {
+        UInt32 tag = info->tag[ix];
+        SecKeychainAttribute *attribute = &attrList->attr[ix];
+        
+        if (tag != attribute->tag) {
+            //TODO more specific errors
+            //sec_error("attribute %d of %ld info tag: %ld != attribute tag: %ld", ix, info->count, tag, attribute->tag);
+            freeObject(object);
+            return NULL;
+            
+        }
+        
+        if(tag == kSecKeyLabel) {
+            int len = (attribute->length < KEYID_SIZE ? attribute->length : KEYID_SIZE);
+            if(class == CKO_PUBLIC_KEY)
+                memcpy(object->storage.publicKey.keyId,attribute->data,len);
+            else if(class == CKO_PRIVATE_KEY)
+                memcpy(object->storage.privateKey.keyId,attribute->data,len);
+        } 
+        if(tag == kSecKeyPrintName) {
+            object->label.Data = malloc(attribute->length);
+            object->label.Length = attribute->length;
+            
+            memcpy(object->label.Data, attribute->data, attribute->length);
+        }
+    }
+    debug(DEBUG_VERBOSE,"new object ID is %s", hexify(object->storage.publicKey.keyId, KEYID_SIZE));
+    //TODO What if object->storage.publicKey.keyId == null now???
+    
+    //TODO free attribList and data
+        
+    
+    
+    if(class == CKO_PUBLIC_KEY) {
+        SecKeyImportExportParameters keyParams;
+        memset(&keyParams, 0, sizeof(keyParams));
+        keyParams.version = SEC_KEY_IMPORT_EXPORT_PARAMS_VERSION;
+        char *data;
+        
+        status = SecKeychainItemExport(keyRef, kSecFormatOpenSSL, 0, &keyParams, &outData);
+        if (status) {
+            debug(DEBUG_VERBOSE, "unable to export public key\n");
+            freeObject(object);
+        }
+        data = CFDataGetBytePtr(outData);
+        object->storage.publicKey.pubKey = d2i_PUBKEY(NULL, &data, CFDataGetLength(outData));
+        if(object->storage.publicKey.pubKey == NULL) {
+            char msg[1024];
+            int err = ERR_get_error();
+            debug(DEBUG_VERBOSE, "Error parsing public key: %s\n",err, ERR_error_string(err, msg));
+        }
+        object->storage.publicKey.keyRef = keyRef;
+        CFRetain(object->storage.publicKey.keyRef);
+        return object;
+    } else if(class == CKO_PRIVATE_KEY) {
+        object->storage.privateKey.keyRef = keyRef;
+        CFRetain(object->storage.privateKey.keyRef);
+        return object;
+    }
+    
+    freeObject(object);
+    return NULL;
+}
+
+/*
 objectEntry *
 makeObjectFromIdRef(SecIdentityRef idRef, CK_OBJECT_CLASS class) 
 {
@@ -423,6 +639,7 @@ makeObjectFromIdRef(SecIdentityRef idRef, CK_OBJECT_CLASS class)
     free(object);
     return NULL;
 }
+ */
 
 objectEntry * 
 getObject(sessionEntry *session, CK_OBJECT_HANDLE hObject) 
@@ -441,6 +658,7 @@ getObject(sessionEntry *session, CK_OBJECT_HANDLE hObject)
     
     return NULL;
 }
+
 
 OSStatus
 getPublicKeyRefForObject(objectEntry *object, SecKeyRef *publicKeyRef)
@@ -471,6 +689,7 @@ getPublicKeyRefForObject(objectEntry *object, SecKeyRef *publicKeyRef)
     }
     return status;
 }
+ 
 
 void
 addObjectToSearchResults(sessionEntry *session, objectEntry *object) 
@@ -628,55 +847,18 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                 
             case CKA_LABEL:
                 debug(DEBUG_VERBOSE,"  CKA_LABEL\n");
-            {
-#if 0
-                
-                char *sn = X509_NAME_oneline(object->storage.certificate.x509->cert_info->subject, NULL, 256);
-                
-                
-                n = strlen(sn);
                 if (pTemplate[i].pValue != NULL) {
-                    if (pTemplate[i].ulValueLen >= n) {
-                        memcpy(pTemplate[i].pValue, sn, n); /*not null terminated*/
-                        debug(DEBUG_VERBOSE,"    %s\n",sn);
+                    if (pTemplate[i].ulValueLen >= object->label.Length) {
+                        memcpy(pTemplate[i].pValue, object->label.Data, object->label.Length-1); /*not null terminated*/
+                        debug(DEBUG_VERBOSE,"    %s\n",object->label.Data);
                     } else {
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
                 } else {
                     debug(DEBUG_VERBOSE,"    sizerequest\n");
                 }
-                pTemplate[i].ulValueLen = n;
-#else
-                
-                char *sn = X509_NAME_oneline(object->storage.certificate.x509->cert_info->subject, NULL, 256);
-                char tag[] = "(  )";
-                
-                
-                int m = strlen(sn);
-                int n = strlen(tag);
-                if (pTemplate[i].pValue != NULL) {
-                    if (pTemplate[i].ulValueLen >= m + n) {
-                        memcpy(pTemplate[i].pValue, sn, m); /*not null terminated*/
-                        sprintf(tag,"(%02d)",object->id);
-                        memcpy(pTemplate[i].pValue+m, tag, n);
-                        debug(DEBUG_VERBOSE,"    %s%s\n",sn,tag);
-                    } else {
-                        rv = CKR_BUFFER_TOO_SMALL;
-                    }
-                } else {
-                    debug(DEBUG_VERBOSE,"    sizerequest\n");
-                }
-                pTemplate[i].ulValueLen = m+n;
-                
-#endif
-                
-                
-                
-            }
+                pTemplate[i].ulValueLen = object->label.Data;
                 break;
-                
-                
-                
                 
             case CKA_CERTIFICATE_TYPE:
                 debug(DEBUG_VERBOSE,"  CKA_CERTIFICATE_TYPE\n");
@@ -928,15 +1110,19 @@ getAttributeValuePublicKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_U
     CK_ULONG i = 0;
     CK_RV rv = CKR_OK;
     
+    debug(DEBUG_VERBOSE,"Getting public key attributes!\n");
     for (i = 0 ; i < ulCount; i++) {
         switch (pTemplate[i].type) {
             case CKA_CLASS:
+                debug(DEBUG_VERBOSE,"  CKA_CLASS\n");
                 if (pTemplate[i].pValue != NULL) {
                     if (pTemplate[i].ulValueLen >= sizeof(object->class)) {
                         memcpy(pTemplate[i].pValue, &object->class, sizeof(object->class));
                     } else {
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
+                } else {
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = sizeof(object->class);
                 break; 
@@ -944,7 +1130,22 @@ getAttributeValuePublicKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_U
             case CKA_TOKEN:
             case CKA_PRIVATE:
             case CKA_MODIFIABLE:
+                break;
+                
             case CKA_LABEL:
+                debug(DEBUG_VERBOSE,"  CKA_LABEL\n");
+                if (pTemplate[i].pValue != NULL) {
+                    if (pTemplate[i].ulValueLen >= object->label.Length) {
+                        memcpy(pTemplate[i].pValue, object->label.Data, object->label.Length-1); /*not null terminated*/
+                        debug(DEBUG_VERBOSE,"    %s\n",object->label.Data);
+                    } else {
+                        debug(DEBUG_VERBOSE,"    buffer too small\n");
+                        rv = CKR_BUFFER_TOO_SMALL;
+                    }
+                } else {
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
+                }
+                pTemplate[i].ulValueLen = object->label.Data;                
                 break;
                 
             case CKA_KEY_TYPE:
@@ -959,18 +1160,25 @@ getAttributeValuePublicKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_U
                     }
                 }
                 pTemplate[i].ulValueLen = sizeof(CK_KEY_TYPE);
+            }
                 break;
-            }   
+                
+
             case CKA_ID:
+                debug(DEBUG_VERBOSE,"  CKA_ID\n");
                 /* Key identifier for key */
                 if (pTemplate[i].pValue != NULL) {
-                    if (pTemplate[i].ulValueLen >= SHA_DIGEST_LENGTH) {
-                        memcpy(pTemplate[i].pValue, &object->storage.publicKey.keyId, SHA_DIGEST_LENGTH);
+                    if (pTemplate[i].ulValueLen >= KEYID_SIZE) {
+                        debug(DEBUG_VERBOSE,"     %s\n",hexify(object->storage.publicKey.keyId, KEYID_SIZE));
+                        memcpy(pTemplate[i].pValue, &object->storage.publicKey.keyId, KEYID_SIZE);
                     } else {
+                        debug(DEBUG_VERBOSE,"     buffer too small\n");
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
+                } else {
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
                 }
-                pTemplate[i].ulValueLen = SHA_DIGEST_LENGTH;
+                pTemplate[i].ulValueLen = KEYID_SIZE;
                 break;
             case CKA_START_DATE:
                 //TODO
@@ -979,31 +1187,35 @@ getAttributeValuePublicKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_U
                 //TODO
                 break;
             case CKA_DERIVE:
-            {
-                CK_BBOOL f = CK_FALSE;
+                debug(DEBUG_VERBOSE,"  CKA_DERIVE\n");
                 if (pTemplate[i].pValue != NULL) {
                     if (pTemplate[i].ulValueLen >= sizeof(CK_BBOOL)) {
+                        CK_BBOOL f = CK_FALSE;
                         memcpy(pTemplate[i].pValue, &f, sizeof(CK_BBOOL));
                     } else {
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
+                } else {
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = sizeof(CK_BBOOL);
                 break;
-            }
+
             case CKA_LOCAL:
-            {
-                CK_BBOOL t = CK_TRUE;
+                debug(DEBUG_VERBOSE,"  CKA_LOCAL\n");
                 if (pTemplate[i].pValue != NULL) {
                     if (pTemplate[i].ulValueLen >= sizeof(CK_BBOOL)) {
+                        CK_BBOOL t = CK_TRUE;
                         memcpy(pTemplate[i].pValue, &t, sizeof(CK_BBOOL));
                     } else {
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
+                } else {
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = sizeof(CK_BBOOL);
                 break;
-            } 
+
             case CKA_KEY_GEN_MECHANISM:
                 //TODO
                 /* Identifier of the mechanim used to generate the key material */
@@ -1047,9 +1259,9 @@ getAttributeValuePublicKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_U
             case CKA_MODULUS:
             {
                 CK_ULONG len = 0;
-                EVP_PKEY *rsa = NULL;
-                rsa = X509_get_pubkey(object->storage.publicKey.x509);
-                
+                EVP_PKEY *rsa = object->storage.publicKey.pubKey;
+             
+                debug(DEBUG_VERBOSE,"  CKA_MODULUS\n");
                 if (!rsa) {
 					rv = CKR_ATTRIBUTE_TYPE_INVALID;
 				} else {
@@ -1060,7 +1272,9 @@ getAttributeValuePublicKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_U
 						} else {
 							rv = CKR_BUFFER_TOO_SMALL;
 						}
-					}
+					} else {
+                        debug(DEBUG_VERBOSE,"    sizerequest\n");
+                    }
 					pTemplate[i].ulValueLen = len;
 				}
             }         
@@ -1069,7 +1283,9 @@ getAttributeValuePublicKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_U
             {
                 CK_ULONG len = 0;
                 EVP_PKEY *rsa = NULL;
-                rsa = X509_get_pubkey(object->storage.publicKey.x509);
+                
+                debug(DEBUG_VERBOSE,"  CKA_MODULUS_BITS\n");
+                rsa = object->storage.publicKey.pubKey;
                 
                 len = BN_num_bits(rsa->pkey.rsa->n);
                 if(pTemplate[i].pValue != NULL) {
@@ -1079,15 +1295,18 @@ getAttributeValuePublicKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_U
                     } else {
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
-                } 
+                }  else {
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
+                }
                 pTemplate[i].ulValueLen = sizeof(CK_ULONG);
             }
                 break;
             case CKA_PUBLIC_EXPONENT: 
             {
+                debug(DEBUG_VERBOSE,"  CKA_PUBLIC_EXPONENT\n");
                 CK_ULONG len = 0;
                 EVP_PKEY *rsa = NULL;
-                rsa = X509_get_pubkey(object->storage.publicKey.x509);
+                rsa = object->storage.publicKey.pubKey;
                 
                 len = BN_num_bits(rsa->pkey.rsa->e);
                 if(pTemplate[i].pValue != NULL) {
@@ -1096,7 +1315,9 @@ getAttributeValuePublicKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_U
                     } else {
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
-                } 
+                }  else {
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
+                }
                 pTemplate[i].ulValueLen = len;
             }         
                 break;    
@@ -1177,14 +1398,14 @@ getAttributeValuePrivateKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_
             case CKA_ID:
                 /* Key identifier for key */
                 if (pTemplate[i].pValue != NULL) {
-                    if (pTemplate[i].ulValueLen >= SHA_DIGEST_LENGTH) {
-                        debug(DEBUG_VERBOSE,"     %s\n",hexify(object->storage.privateKey.keyId, SHA_DIGEST_LENGTH));
-                        memcpy(pTemplate[i].pValue, &object->storage.privateKey.keyId, SHA_DIGEST_LENGTH);
+                    if (pTemplate[i].ulValueLen >= KEYID_SIZE) {
+                        debug(DEBUG_VERBOSE,"     %s\n",hexify(object->storage.privateKey.keyId, KEYID_SIZE));
+                        memcpy(pTemplate[i].pValue, &object->storage.privateKey.keyId, KEYID_SIZE);
                     } else {
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
                 }
-                pTemplate[i].ulValueLen = SHA_DIGEST_LENGTH;
+                pTemplate[i].ulValueLen = KEYID_SIZE;
                 break;
                 
             case CKA_START_DATE:
@@ -1463,11 +1684,7 @@ findObjectsInitCertificate(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK
                 if (pTemplate[i].pValue != NULL) {
                     objectEntry *cur = session->objectList;
                     while(cur != NULL) {
-                        char sn[pTemplate[i].ulValueLen];
-                        
-                        X509_NAME_oneline(cur->storage.certificate.x509->cert_info->subject, sn, pTemplate[i].ulValueLen);
-                        
-                        if(strncmp(sn, pTemplate[i].pValue, pTemplate[i].ulValueLen) == 0) {
+                        if(strncmp(object->label.Data, pTemplate[i].pValue, MIN(object->label.Length, pTemplate[i].ulValueLen)) == 0) {
                             //keep this object
                             cur = cur->nextObject;
                         } else {
@@ -1766,6 +1983,7 @@ findObjectsInitPublicKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_U
     if(session->objectList == NULL) {
         session->searchList = NULL;
         session->cursor = NULL;
+        debug(DEBUG_VERBOSE, "no objects found\n");
         return CKR_OK;
     }
     
@@ -1773,6 +1991,7 @@ findObjectsInitPublicKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_U
     object = session->objectList;
     while(object != NULL) {
         if(object->class == CKO_PUBLIC_KEY) {
+            debug(DEBUG_VERBOSE, "found a matching object\n");
             addObjectToSearchResults(session,object);
         }
         object = object->nextObject;
@@ -1839,11 +2058,8 @@ findObjectsInitPublicKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_U
                 if (pTemplate[i].pValue != NULL) {
                     objectEntry *cur = session->objectList;
                     while(cur != NULL) {
-                        char sn[pTemplate[i].ulValueLen+1];
                         
-                        X509_NAME_oneline(cur->storage.publicKey.x509->cert_info->subject, sn, pTemplate[i].ulValueLen+1);
-                        
-                        if(strncmp(sn, pTemplate[i].pValue, pTemplate[i].ulValueLen) == 0) {
+                        if(strncmp(object->label.Data, pTemplate[i].pValue, MIN(object->label.Length, pTemplate[i].ulValueLen)) == 0) {
                             //keep this object
                             cur = cur->nextObject;
                         } else {
@@ -1921,29 +2137,7 @@ findObjectsInitPublicKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_U
             case CKA_SUBJECT:
                 /* DER-encoded certificate subject name */
                 debug(DEBUG_VERBOSE,"  CKA_SUBJECT\n");
-                if(pTemplate[i].pValue != NULL) {
-                    objectEntry *cur = session->objectList;
-                    while(cur != NULL) {
-                        n = i2d_X509_NAME(cur->storage.publicKey.x509->cert_info->subject, NULL);
-                        if (pTemplate[i].ulValueLen < n) {
-                            //too small to match
-                            objectEntry *rem = cur;
-                            cur = cur->nextObject;
-                            removeObjectFromSearchResults(session, rem);
-                            
-                        } else {
-                            unsigned char *sn;
-                            n = i2d_X509_NAME(cur->storage.publicKey.x509->cert_info->subject, &sn);
-                            if(memcmp(sn, pTemplate[i].pValue, n) != 0) {
-                                objectEntry *rem = cur;
-                                cur = cur->nextObject;
-                                removeObjectFromSearchResults(session, rem);
-                            }
-                        }
-                    }
-                } else {
-                    return CKR_ARGUMENTS_BAD;
-                }
+                //TODO
                 break;
                 
             case CKA_ENCRYPT:

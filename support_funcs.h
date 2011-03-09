@@ -12,6 +12,7 @@
 
 #include <Security/cssm.h>
 #include <openssl/x509.h>
+#include <openssl/err.h>
 
 #include "mypkcs11.h"
 #include "types.h"
@@ -44,13 +45,14 @@ void removeSession(CK_SESSION_HANDLE hSession);
 
 
 
-int isCertDuplicated(sessionEntry *session, objectEntry *object);
+int isDuplicated(sessionEntry *session, objectEntry *object);
 void addObject(sessionEntry *session, objectEntry *object);
 void removeObject(sessionEntry *session, objectEntry *object);
 void freeAllObjects(sessionEntry *session);
 void freeObject(objectEntry *object);
 
-objectEntry * makeObjectFromCertificateRef(SecCertificateRef certRef, CK_OBJECT_CLASS class);
+objectEntry * makeObjectFromCertificateRef(SecCertificateRef certRef, SecKeychainRef keychain, CK_OBJECT_CLASS class);
+objectEntry * makeObjectFromKeyRef(SecKeyRef keyRef, SecKeychainRef keychain, CK_OBJECT_CLASS class);
 objectEntry * makeObjectFromIdRef(SecIdentityRef idRef, CK_OBJECT_CLASS class);
 objectEntry * getObject(sessionEntry *session, CK_OBJECT_HANDLE hObject);
 

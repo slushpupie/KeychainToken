@@ -643,12 +643,16 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
     objectEntry *object;
     
     SecKeychainSearchRef kcSearchReference = NULL;
-    SecIdentitySearchRef idSearchReference = NULL;
+
     SecKeychainItemRef itemRef = NULL;
-    SecIdentityRef idRef = NULL;
-    SecKeychainAttributeList attrList;
+    SecItemClass itemClass = 0;
+    SecKeychainAttributeList *attrList = NULL;
+    SecKeychainAttributeInfo *info = NULL;
+    UInt32 length = 0;
+	void *data = NULL;
     CK_RV rv = CKR_OK;
     int count = 0;
+    int ix = 0;
     
     
     if(ulCount > 0 && pTemplate == NULL) {
@@ -669,52 +673,8 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
     }
     
     /* Find all objects first */
-    status = SecIdentitySearchCreate(keychainSlots[session->slot], 0, &idSearchReference);
-    if(status != 0) {
-        //TODO more specific errors
-        if(mutex.use) {
-            mutex.UnlockMutex(session->myMutex);
-        }
-        return CKR_GENERAL_ERROR;
-    }
-    status = SecIdentitySearchCopyNext(idSearchReference, &idRef);
-    while(status == 0) {
-        
-        object = makeObjectFromIdRef(idRef, CKO_CERTIFICATE);
-        if(object != NULL && !isCertDuplicated(session, object)) {
-            count++;
-            addObject(session,object);
-            /*
-             object = makeObjectFromIdRef(idRef, CKO_PUBLIC_KEY);
-             if(object != NULL) {
-             count++;
-             addObject(session,object);
-             }
-             */
-            object = makeObjectFromIdRef(idRef, CKO_PRIVATE_KEY);
-            if(object != NULL) {
-                count++;
-                addObject(session,object);
-            }
-        }
-        
-        status = SecIdentitySearchCopyNext(idSearchReference, &idRef);
-    }
-    if(status != errSecItemNotFound) {
-        freeAllObjects(session);
-        if(mutex.use) {
-            mutex.UnlockMutex(session->myMutex);
-        }
-        return CKR_GENERAL_ERROR;
-    }
-    if(idSearchReference) {
-        CFRelease(idSearchReference);
-    }
-    
-    attrList.count = 0;
-    attrList.attr = NULL;
-    
-    status = SecKeychainSearchCreateFromAttributes(keychainSlots[session->slot], kSecCertificateItemClass, &attrList, &kcSearchReference);
+    debug(DEBUG_VERBOSE, "finding all objects\n");
+    status = SecKeychainSearchCreateFromAttributes(keychainSlots[session->slot], CSSM_DL_DB_RECORD_ANY, attrList, &kcSearchReference);
     if(status != 0) {
         //TODO more specific errors
         if(mutex.use) {
@@ -724,18 +684,74 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
     }
     status = SecKeychainSearchCopyNext(kcSearchReference, &itemRef);
     while(status == 0) {
-        object = makeObjectFromCertificateRef((SecCertificateRef) itemRef, CKO_CERTIFICATE);
-        if(object != NULL && !isCertDuplicated(session, object)) {
-            count++;
-            addObject(session,object);
-            /*
-             object = makeObjectFromCertificateRef((SecCertificateRef) itemRef, CKO_PUBLIC_KEY);
-             if(object != NULL) {
-             count++;
-             addObject(session, object);
-             }
-             */
-        }    
+        
+        /* First find out the item class. */
+        status = SecKeychainItemCopyAttributesAndData(itemRef, NULL, &itemClass, NULL, NULL, NULL);
+        if (status) {
+            //TODO more specific errors
+            if(mutex.use) {
+                mutex.UnlockMutex(session->myMutex);
+            }
+            return CKR_GENERAL_ERROR;
+        }
+        
+        switch (itemClass) {
+            case CSSM_DL_DB_RECORD_PUBLIC_KEY:
+            case CSSM_DL_DB_RECORD_PRIVATE_KEY:
+            case CSSM_DL_DB_RECORD_CERT:
+            case CSSM_DL_DB_RECORD_X509_CERTIFICATE:
+                break;
+            case CSSM_DL_DB_RECORD_CRL:
+            case CSSM_DL_DB_RECORD_POLICY:
+            case CSSM_DL_DB_RECORD_GENERIC:
+            case CSSM_DL_DB_RECORD_SYMMETRIC_KEY:
+            case CSSM_DL_DB_RECORD_GENERIC_PASSWORD:
+            case CSSM_DL_DB_RECORD_INTERNET_PASSWORD:
+            case CSSM_DL_DB_RECORD_APPLESHARE_PASSWORD:
+                // classes we dont care about
+                goto nextRecord;
+            default:
+                debug(DEBUG_VERBOSE, "item not of a class we know about (%u)\n",itemClass);
+                goto nextRecord;
+        }
+        
+        /* Now add the object to the object list */
+        switch (itemClass) {
+            case kSecCertificateItemClass:
+                
+                object = makeObjectFromCertificateRef((SecCertificateRef) itemRef,keychainSlots[session->slot], CKO_CERTIFICATE);
+                if(object != NULL && !isDuplicated(session, object)) {
+                    count++;
+                    addObject(session,object);
+                    
+                    // Some apps expect the cert public key to be an object, so we will try to add it from the cert
+                    object = makeObjectFromCertificateRef((SecCertificateRef) itemRef, keychainSlots[session->slot], CKO_PUBLIC_KEY);
+                    if(object != NULL) {
+                        count++;
+                        addObject(session, object);
+                    }
+                }   
+                break;
+            case kSecPublicKeyItemClass:
+                
+                
+                
+                object = makeObjectFromKeyRef((SecKeyRef) itemRef, keychainSlots[session->slot], CKO_PUBLIC_KEY);
+                if(object != NULL && !isDuplicated(session, object)) {
+                    count++;
+                    addObject(session,object);
+                }
+                break;
+            case kSecPrivateKeyItemClass:
+                object = makeObjectFromKeyRef((SecKeyRef) itemRef, keychainSlots[session->slot], CKO_PRIVATE_KEY);
+                if(object != NULL && !isDuplicated(session, object)) {
+                    count++;
+                    addObject(session,object);
+                }
+                break;
+        }
+               
+    nextRecord:
         status = SecKeychainSearchCopyNext(kcSearchReference, &itemRef);
     }
     if(status != errSecItemNotFound) {
@@ -748,6 +764,7 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
     if(kcSearchReference) {
         CFRelease(kcSearchReference);
     }
+    
     
     
     /* Filter out based on tempalte */
@@ -1279,6 +1296,7 @@ signInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HAND
     
     
     status = SecKeychainGetCSPHandle(keychainRef, &cspHandle);
+    //status = SecKeyGetCSPHandle(keychainRef, &cspHandle);
     if (status != 0) {
         debug(DEBUG_WARNING,"Error in SecKeychainGetCSPHandle\n");
         returnVal = CKR_GENERAL_ERROR;

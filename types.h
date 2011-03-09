@@ -9,11 +9,12 @@
 
 #ifndef _TYPES_H_
 #define _TYPES_H_
+#include "constants.h"
 
 typedef struct _certObjectEntry {
     SecIdentityRef idRef;
     SecCertificateRef certRef;
-    unsigned char keyId[SHA_DIGEST_LENGTH];
+    unsigned char keyId[KEYID_SIZE];
     X509 *x509;
     
     int havePrivateKey;
@@ -22,15 +23,15 @@ typedef struct _certObjectEntry {
 typedef struct _pubKeyObjectEntry {
     SecIdentityRef idRef;
     SecKeyRef keyRef;
-    unsigned char keyId[SHA_DIGEST_LENGTH];
-    X509 *x509;
+    unsigned char keyId[KEYID_SIZE];
+    EVP_PKEY *pubKey;
     
 } pubKeyObjectEntry;
 
 typedef struct _privKeyObjectEntry {
     SecIdentityRef idRef;
     SecKeyRef keyRef;
-    unsigned char keyId[SHA_DIGEST_LENGTH];
+    unsigned char keyId[KEYID_SIZE];
     X509 *x509;
     
 } privKeyObjectEntry;
@@ -40,7 +41,7 @@ typedef struct _objectEntry {
     CK_OBJECT_CLASS class;
     CK_ATTRIBUTE    *pTemplate;
     CK_ULONG        templateSize;
-    
+    CSSM_DATA label;
     
     struct _objectEntry *nextObject;
     

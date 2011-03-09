@@ -54,11 +54,13 @@ static mechInfo mechanismList[] = { {CKM_RSA_PKCS, { 1024, 4096, CKF_HW | CKF_SI
 static unsigned long numMechanisms = sizeof(mechanismList)/sizeof(mechInfo);
 mutexFunctions mutex;
 
+UInt8 unique = 0;
+
 /* macro for unimplemented functions */
 #define NOTSUPPORTED(name, args) \
 CK_RV name args \
 { \
-    debug(1, #name " called (NOTSUPPORTED)\n"); \
+    debug(DEBUG_CRITICAL, #name " called (NOTSUPPORTED)\n"); \
     return CKR_FUNCTION_NOT_SUPPORTED; \
 }
 
@@ -68,9 +70,9 @@ CK_RV name2 dec_args ; \
 CK_RV name dec_args \
 { \
     CK_RV rv = CKR_OK; \
-    debug(1, #name " called\n"); \
+    debug(DEBUG_CRITICAL, #name " called\n"); \
     rv = name2 use_args ; \
-    debug(1, #name " returned %s (0x%X)\n", getCKRName(rv), rv); \
+    debug(DEBUG_CRITICAL, #name " returned %s (0x%X)\n", getCKRName(rv), rv); \
     return rv; \
 }
 
@@ -80,12 +82,12 @@ CK_RV name2 dec_args ; \
 CK_RV name dec_args \
 { \
     CK_RV rv = CKR_OK; \
-    debug(1, #name " called\n"); \
+    debug(DEBUG_CRITICAL, #name " called\n"); \
     if( ! initialized ) { \
         return CKR_CRYPTOKI_NOT_INITIALIZED; \
     } \
     rv = name2 use_args; \
-    debug(1, #name " returned %s (0x%X)\n", getCKRName(rv), rv); \
+    debug(DEBUG_CRITICAL, #name " returned %s (0x%X)\n", getCKRName(rv), rv); \
     return rv; \
 }
 
@@ -163,8 +165,12 @@ SUPPORTED(C_FindObjects, findObjects,
 SUPPORTED(C_FindObjectsFinal, findObjectsFinal,
           (CK_SESSION_HANDLE hSession),
           (hSession))
-NOTSUPPORTED(C_EncryptInit, (CK_SESSION_HANDLE hSession,CK_MECHANISM_PTR pMechanism,CK_OBJECT_HANDLE hKey))
-NOTSUPPORTED(C_Encrypt, (CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pEncrryptedData, CK_ULONG_PTR pulEncryptedDataLen))
+SUPPORTED(C_EncryptInit, encryptInit,
+		  (CK_SESSION_HANDLE hSession,CK_MECHANISM_PTR pMechanism,CK_OBJECT_HANDLE hKey),
+		  (hSession, pMechanism, hKey))
+SUPPORTED(C_Encrypt, c_encrypt,
+		  (CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen),
+		  (hSession, pData, ulDataLen, pEncryptedData, pulEncryptedDataLen))
 NOTSUPPORTED(C_EncryptUpdate, (CK_SESSION_HANDLE hSession,CK_BYTE_PTR pPart,CK_ULONG ulPartLen,CK_BYTE_PTR pEncryptedPart,CK_ULONG_PTR pulEncryptedPartLen))
 NOTSUPPORTED(C_EncryptFinal, (CK_SESSION_HANDLE hSession,CK_BYTE_PTR pLastEncryptedPart,CK_ULONG_PTR pulLastEncryptedPartLen))
 SUPPORTED(C_DecryptInit, decryptInit,
@@ -186,12 +192,20 @@ SUPPORTED(C_SignInit, signInit,
 SUPPORTED(C_Sign, sign,
           (CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen),
           (hSession, pData, ulDataLen, pSignature, pulSignatureLen))
-NOTSUPPORTED(C_SignUpdate, (CK_SESSION_HANDLE hSession, CK_BYTE_PTR pPart, CK_ULONG ulPartLen))
-NOTSUPPORTED(C_SignFinal, (CK_SESSION_HANDLE hSession,CK_BYTE_PTR pSignature,CK_ULONG_PTR pulSignatureLen))
+SUPPORTED(C_SignUpdate, signUpdate,
+          (CK_SESSION_HANDLE hSession, CK_BYTE_PTR pPart, CK_ULONG ulPartLen),
+          (hSession, pPart, ulPartLen))
+SUPPORTED(C_SignFinal, signFinal,
+          (CK_SESSION_HANDLE hSession,CK_BYTE_PTR pSignature,CK_ULONG_PTR pulSignatureLen),
+          (hSession, pSignature, pulSignatureLen))
 NOTSUPPORTED(C_SignRecoverInit, (CK_SESSION_HANDLE hSession,CK_MECHANISM_PTR pMechanism,CK_OBJECT_HANDLE hKey))
 NOTSUPPORTED(C_SignRecover, (CK_SESSION_HANDLE hSession,CK_BYTE_PTR pData,CK_ULONG ulDataLen,CK_BYTE_PTR pSignature,CK_ULONG_PTR pulSignatureLen))
-NOTSUPPORTED(C_VerifyInit, (CK_SESSION_HANDLE hSession,CK_MECHANISM_PTR pMechanism,CK_OBJECT_HANDLE hKey))
-NOTSUPPORTED(C_Verify, (CK_SESSION_HANDLE hSession,CK_BYTE_PTR pData,CK_ULONG ulDataLen,CK_BYTE_PTR pSignature,CK_ULONG ulSignatureLen))
+SUPPORTED(C_VerifyInit, verifyInit,
+		  (CK_SESSION_HANDLE hSession,CK_MECHANISM_PTR pMechanism,CK_OBJECT_HANDLE hKey),
+		  (hSession, pMechanism, hKey))
+SUPPORTED(C_Verify, c_verify,
+		  (CK_SESSION_HANDLE hSession,CK_BYTE_PTR pData,CK_ULONG ulDataLen,CK_BYTE_PTR pSignature,CK_ULONG ulSignatureLen),
+		  (hSession, pData, ulDataLen, pSignature, ulSignatureLen))
 NOTSUPPORTED(C_VerifyUpdate, (CK_SESSION_HANDLE hSession, CK_BYTE_PTR pPart, CK_ULONG ulPartLen))
 NOTSUPPORTED(C_VerifyFinal, (CK_SESSION_HANDLE hSession,CK_BYTE_PTR pSignature,CK_ULONG ulSignatureLen))
 NOTSUPPORTED(C_VerifyRecoverInit, (CK_SESSION_HANDLE hSession,CK_MECHANISM_PTR pMechanism,CK_OBJECT_HANDLE hKey))

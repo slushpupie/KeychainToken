@@ -12,13 +12,6 @@
 #define CHECK_SLOTID(id) if ( ((id) < 0) || ((id) > MAX_SLOTS - 1) ) return CKR_SLOT_ID_INVALID
 
 CK_RV
-unimplemented()
-{
-    debug(1,"function unimplemented\n");
-    return CKR_GENERAL_ERROR;
-}
-
-CK_RV
 initialize(CK_VOID_PTR pInitArgs)
 {
     CK_C_INITIALIZE_ARGS* initArgs = (CK_C_INITIALIZE_ARGS*) pInitArgs;
@@ -33,19 +26,19 @@ initialize(CK_VOID_PTR pInitArgs)
     
     if (initArgs != NULL) {
         if (initArgs->flags & CKF_OS_LOCKING_OK) {
-            debug(1," CKF_OS_LOCKING_OK set\n");
+            debug(DEBUG_VERBOSE," CKF_OS_LOCKING_OK set\n");
             
         } else if(initArgs->flags * CKF_LIBRARY_CANT_CREATE_OS_THREADS) {
-            debug(1, " CKF_LIBRARY_CANT_CREATE_OS_THREADS set\n");
+            debug(DEBUG_VERBOSE, " CKF_LIBRARY_CANT_CREATE_OS_THREADS set\n");
             /* No impact on us */
         }
         
         if(initArgs->flags & CKF_OS_LOCKING_OK) {
-             if(initArgs->CreateMutex == NULL ||
-                initArgs->DestroyMutex == NULL ||
-                initArgs->LockMutex == NULL ||
-                initArgs->UnlockMutex == NULL) {
-        
+            if(initArgs->CreateMutex == NULL ||
+               initArgs->DestroyMutex == NULL ||
+               initArgs->LockMutex == NULL ||
+               initArgs->UnlockMutex == NULL) {
+                
                 return CKR_CANT_LOCK;
             }
         }
@@ -71,7 +64,7 @@ initialize(CK_VOID_PTR pInitArgs)
         }
         
         
-
+        
         
         cmPvcPolicy = CSSM_PVC_NONE;
         cmVersion.Major = 2;
@@ -134,26 +127,26 @@ getSlotList(CK_BBOOL tokenPresent, CK_SLOT_ID_PTR pSlotList, CK_ULONG_PTR pulCou
     if (pulCount == NULL) {
         return CKR_ARGUMENTS_BAD;
     }
-
+    
     if(mutex.use) {
         mutex.LockMutex(mutex.slotMutex);
     }
     numSlots = updateSlotList();
     
     
-    debug(1,"Requested slots TP=%s numSlots=%d\n",(tokenPresent ? "true" : "false"), numSlots);
+    debug(DEBUG_INFO,"Requested slots TP=%s numSlots=%d\n",(tokenPresent ? "true" : "false"), numSlots);
     if (pSlotList != NULL) {
         if(tokenPresent) {
             for(i=0,j=0; i < MAX_SLOTS; i++) {
                 if(keychainSlots[i] != NULL) {
                     pSlotList[j++] = i;
-                    debug(1,"slot[%d] = %d\n",j-1,i);
+                    debug(DEBUG_INFO,"slot[%d] = %d\n",j-1,i);
                 }
             }
         } else {
             for(i=0; i < MAX_SLOTS; i++) {
                 pSlotList[i] = i;
-                debug(1,"slot[%d] = %d\n",i,i);
+                debug(DEBUG_INFO,"slot[%d] = %d\n",i,i);
             }
         }
     }
@@ -195,13 +188,13 @@ getSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pSlotInfo)
         status = SecKeychainGetPath(keychainSlots[slotID], &len, keychainName);
         if (status != 0) {
             if(status == errSecBufferTooSmall) {
-                debug(1,"Buffer of %d too small. Growing to %d\n", MAX_KEYCHAIN_PATH_LEN, len);
+                debug(DEBUG_INFO,"Buffer of %d too small. Growing to %d\n", MAX_KEYCHAIN_PATH_LEN, len);
                 free(keychainName);
                 keychainName = malloc(len);
                 status = SecKeychainGetPath(keychainSlots[slotID], &len, keychainName);
                 if(status != 0) {
                     memcpy(keychainName, "keychain error", 15); 
-                    debug(1,"Error getting keychain path: %d\n",status);
+                    debug(DEBUG_INFO,"Error getting keychain path: %d\n",status);
                 }
             } 
         }
@@ -218,7 +211,7 @@ getSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pSlotInfo)
     pSlotInfo->hardwareVersion.minor = 0;
     pSlotInfo->firmwareVersion.major = 0;
     pSlotInfo->firmwareVersion.minor = 0;
-        
+    
     return CKR_OK;
 }
 
@@ -230,13 +223,13 @@ getTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pTokenInfo)
     char keychainName[MAX_KEYCHAIN_PATH_LEN];
     char *filename;
     UInt32 keychainLen = sizeof(keychainName) - 1; 
-
+    
     
     
     if( ! initialized ) {
         return CKR_CRYPTOKI_NOT_INITIALIZED;
     }
-   
+    
     if (pTokenInfo == NULL) {
         return CKR_ARGUMENTS_BAD;
     }
@@ -244,8 +237,8 @@ getTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pTokenInfo)
     CHECK_SLOTID(slotID);
     
     if (keychainSlots[slotID] != NULL) {
-                    
-            
+        
+        
         memset(keychainName, 0, sizeof(keychainName));
         status = SecKeychainGetPath(keychainSlots[slotID], &keychainLen, keychainName);
         if (status != 0) {
@@ -258,7 +251,7 @@ getTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pTokenInfo)
         setString("Apple Computer", (char *)pTokenInfo->manufacturerID, 32);
         setString("Keychain", (char *)pTokenInfo->model, 16);
         setString(filename,  (char *)pTokenInfo->serialNumber, 16);
-        pTokenInfo->flags = CKF_WRITE_PROTECTED | CKF_TOKEN_INITIALIZED | CKF_USER_PIN_INITIALIZED; //TODO Determine if keychain requires login
+        pTokenInfo->flags = CKF_WRITE_PROTECTED | CKF_TOKEN_INITIALIZED | CKF_USER_PIN_INITIALIZED | CKF_PROTECTED_AUTHENTICATION_PATH; 
         
         if(isKeychainGreylisted(keychainName)) {
             pTokenInfo->flags |= CKF_USER_PIN_LOCKED | CKF_SO_PIN_LOCKED;
@@ -278,15 +271,15 @@ getTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pTokenInfo)
         pTokenInfo->ulFreePrivateMemory = CK_UNAVAILABLE_INFORMATION;
         pTokenInfo->hardwareVersion.major = 0;
         pTokenInfo->hardwareVersion.minor = 0;
-
+        
         status = SecKeychainGetVersion(&vers);
         if(status != 0) {
             /* not fatal */
             vers = 0;
         }
-                
+        
         pTokenInfo->firmwareVersion.major = vers;
-
+        
         pTokenInfo->firmwareVersion.minor = 0;
         
         setString("1970010100000000" , (char *)pTokenInfo->utcTime, 16);
@@ -310,7 +303,9 @@ waitForSlotEvent(CK_FLAGS flags, CK_SLOT_ID_PTR pSlot, CK_VOID_PTR pReserved)
         /* while(initialized) { sleep(1000); } */
         return CKR_NO_EVENT;
     }
-    return unimplemented();
+    
+    debug(DEBUG_CRITICAL,"function not implemented\n");
+    return CKR_GENERAL_ERROR;
 }
 
 CK_RV
@@ -384,7 +379,7 @@ openSession(CK_SLOT_ID slotID, CK_FLAGS flags, CK_VOID_PTR pApplication, CK_NOTI
     }
     
     if(mutex.use) {
-        debug(1,"Locking sessionMutex\n");
+        debug(DEBUG_INFO,"Locking sessionMutex\n");
         rv = mutex.LockMutex(mutex.sessionMutex);
         if(rv != CKR_OK) {
             return rv;
@@ -398,10 +393,10 @@ openSession(CK_SLOT_ID slotID, CK_FLAGS flags, CK_VOID_PTR pApplication, CK_NOTI
     
     do {
         *phSession = ++sessionCounter;
-        debug(1, "new session handle: %d\n", *phSession);
+        debug(DEBUG_INFO, "new session handle: %d\n", *phSession);
         oldSession = findSessionEntry(*phSession);
         if(oldSession != NULL) 
-            debug(1, "oldSession with that handle found, trying again.");
+            debug(DEBUG_INFO, "oldSession with that handle found, trying again.");
     } while (oldSession != NULL);
     
     
@@ -414,8 +409,8 @@ openSession(CK_SLOT_ID slotID, CK_FLAGS flags, CK_VOID_PTR pApplication, CK_NOTI
     if(mutex.use) {
         rv = mutex.CreateMutex(&(newSession->myMutex));
         if(rv != CKR_OK) {
-            debug(1, "unable to create a mutex for this session object\n");
-            debug(1, "Unlocking sessionMutex\n");
+            debug(DEBUG_INFO, "unable to create a mutex for this session object\n");
+            debug(DEBUG_INFO, "Unlocking sessionMutex\n");
             mutex.UnlockMutex(mutex.sessionMutex);
             return rv;
         }
@@ -424,7 +419,7 @@ openSession(CK_SLOT_ID slotID, CK_FLAGS flags, CK_VOID_PTR pApplication, CK_NOTI
     addSession(newSession);
     
     if(mutex.use) {
-        debug(1,"Unlocking sessionMutex\n");
+        debug(DEBUG_INFO,"Unlocking sessionMutex\n");
         mutex.UnlockMutex(mutex.sessionMutex);
     }
     return CKR_OK;
@@ -434,15 +429,15 @@ CK_RV
 closeSession(CK_SESSION_HANDLE hSession)
 {
     if(mutex.use) {
-        debug(1,"Locking sessionMutex\n");
+        debug(DEBUG_INFO,"Locking sessionMutex\n");
         mutex.LockMutex(mutex.sessionMutex);
     }
     
-    debug(1,"Closing session %d\n",hSession);
+    debug(DEBUG_INFO,"Closing session %d\n",hSession);
     removeSession(hSession);
     
     if(mutex.use) {
-        debug(1,"Unlocking sessionMutex\n");
+        debug(DEBUG_INFO,"Unlocking sessionMutex\n");
         mutex.UnlockMutex(mutex.sessionMutex);
     }
     
@@ -453,11 +448,11 @@ CK_RV
 closeAllSessions(CK_SLOT_ID slotID) 
 {    
     sessionEntry *cur, *next;
-  
+    
     CHECK_SLOTID(slotID);
     
     if(mutex.use) {
-        debug(1,"Locking sessionMutex\n");
+        debug(DEBUG_INFO,"Locking sessionMutex\n");
         mutex.LockMutex(mutex.sessionMutex);
     }
     
@@ -476,7 +471,7 @@ closeAllSessions(CK_SLOT_ID slotID)
     }
     
     if(mutex.use) {
-        debug(1,"Unlocking sessionMutex\n");
+        debug(DEBUG_INFO,"Unlocking sessionMutex\n");
         mutex.UnlockMutex(mutex.sessionMutex);
     }
     return CKR_OK;
@@ -493,7 +488,7 @@ getSessionInfo(CK_SESSION_HANDLE hSession, CK_SESSION_INFO_PTR pInfo)
     
     session = findSessionEntry(hSession);
     if(session == NULL) {
-        debug(1,"session %d dosnt exist\n",hSession);
+        debug(DEBUG_INFO,"session %d dosnt exist\n",hSession);
         return CKR_SESSION_HANDLE_INVALID;
     }
     
@@ -516,16 +511,11 @@ login(CK_SESSION_HANDLE hSession, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, C
     if (userType != CKU_USER) {
         return CKR_USER_TYPE_INVALID;
     }
-    if (pPin == NULL) {
-        return CKR_ARGUMENTS_BAD;
-    }
     
     session = findSessionEntry(hSession);
     if(session == NULL) {
         return CKR_SESSION_HANDLE_INVALID;
     }
-    
-    
     
     if(mutex.use) {
         mutex.LockMutex(session->myMutex);
@@ -544,18 +534,7 @@ login(CK_SESSION_HANDLE hSession, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, C
         return CKR_PIN_LOCKED;
     }
     
-#if 0
-    /* We should lock first, to really make sure the entered pin is correct, right? */
-    status = SecKeychainLock( keychainSlots[ session->slot ] );
-    if (status != 0) {
-        if(mutex.use) {
-            mutex.UnlockMutex(session->myMutex);
-        }
-        return CKR_GENERAL_ERROR;
-    }
-#endif
-    
-    status = SecKeychainUnlock(keychainSlots[ session->slot] , (UInt32) ulPinLen, pPin, TRUE);
+    status = SecKeychainUnlock(keychainSlots[ session->slot] , 0, NULL, FALSE);
     if (status != 0) {
         
         if(mutex.use) {
@@ -574,7 +553,7 @@ login(CK_SESSION_HANDLE hSession, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, C
     
     session->loggedIn = TRUE;
     session->state = CKS_RO_USER_FUNCTIONS;
-
+    
     if(mutex.use) {
         mutex.UnlockMutex(session->myMutex);
     }
@@ -643,13 +622,13 @@ getAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ATTRI
         case CKO_PRIVATE_KEY:
             return getAttributeValuePrivateKey(object, pTemplate, ulCount);
         default:
-            debug(1,"This object class is %s\n",getCKOName(object->class));
+            debug(DEBUG_WARNING,"This object class is %s\n",getCKOName(object->class));
             /* This should never happen, since we dont create objects besides what
              * we know how to handle.
              */
             return CKR_ATTRIBUTE_TYPE_INVALID;
     }
-                    
+    
     return CKR_ATTRIBUTE_TYPE_INVALID;
 }
 
@@ -662,7 +641,7 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
     OSStatus status;
     CK_ULONG i;
     objectEntry *object;
-
+    
     SecKeychainSearchRef kcSearchReference = NULL;
     SecIdentitySearchRef idSearchReference = NULL;
     SecKeychainItemRef itemRef = NULL;
@@ -670,7 +649,7 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
     SecKeychainAttributeList attrList;
     CK_RV rv = CKR_OK;
     int count = 0;
-
+    
     
     if(ulCount > 0 && pTemplate == NULL) {
         return CKR_ARGUMENTS_BAD;
@@ -706,12 +685,12 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
             count++;
             addObject(session,object);
             /*
-            object = makeObjectFromIdRef(idRef, CKO_PUBLIC_KEY);
-            if(object != NULL) {
-                count++;
-                addObject(session,object);
-            }
-            */
+             object = makeObjectFromIdRef(idRef, CKO_PUBLIC_KEY);
+             if(object != NULL) {
+             count++;
+             addObject(session,object);
+             }
+             */
             object = makeObjectFromIdRef(idRef, CKO_PRIVATE_KEY);
             if(object != NULL) {
                 count++;
@@ -750,12 +729,12 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
             count++;
             addObject(session,object);
             /*
-            object = makeObjectFromCertificateRef((SecCertificateRef) itemRef, CKO_PUBLIC_KEY);
-            if(object != NULL) {
-                count++;
-                addObject(session, object);
-            }
-            */
+             object = makeObjectFromCertificateRef((SecCertificateRef) itemRef, CKO_PUBLIC_KEY);
+             if(object != NULL) {
+             count++;
+             addObject(session, object);
+             }
+             */
         }    
         status = SecKeychainSearchCopyNext(kcSearchReference, &itemRef);
     }
@@ -775,12 +754,13 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
     if(ulCount == 0) {
         objectEntry *cur = session->objectList;
         
-        debug(1,"Requested all objects\n");
+        debug(DEBUG_VERBOSE,"Requested all objects\n");
         while(cur != NULL) {
             addObjectToSearchResults(session,cur);
+			cur = cur->nextObject;
         }
         session->cursor = session->searchList;
-
+        
         if(mutex.use) {
             mutex.UnlockMutex(session->myMutex);
         }
@@ -788,13 +768,13 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
     }         
     
     
-    debug(1,"Request template has %u elements\n",ulCount);
+    debug(DEBUG_VERBOSE,"Request template has %u elements\n",ulCount);
     for(i = 0; i < ulCount; i++) {
         if(pTemplate[i].type == CKA_CLASS) {
             CK_ULONG class;
             memcpy(&class, pTemplate[i].pValue, pTemplate[i].ulValueLen);
             
-            debug(1,"Requested CKA_CLASS = ");
+            debug(DEBUG_VERBOSE,"Requested CKA_CLASS = ");
             switch(class) {
                 case CKO_CERTIFICATE:
                     rv = findObjectsInitCertificate(session, pTemplate, ulCount );
@@ -820,6 +800,7 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
                     return rv;
                     break;   
                     
+				case CKO_DATA:
                 case CKO_SECRET_KEY:
                 case CKO_HW_FEATURE:
                 case CKO_DOMAIN_PARAMETERS:
@@ -828,27 +809,27 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
                 case CKO_NSS_BUILTIN_ROOT_LIST:
                 case CKO_NSS_CRL:
                 case CKO_NETSCAPE_TRUST:
-                    debug(1,"unsupported object of type 0x%X (%s)\n", class, getCKOName(class));
+                    debug(DEBUG_INFO,"unsupported object of type 0x%X (%s)\n", class, getCKOName(class));
                     break;
                 default:
-                    debug(1,"unknown object of type 0x%X (%s)\n", class, getCKOName(class));
+                    debug(DEBUG_INFO,"unknown object of type 0x%X (%s)\n", class, getCKOName(class));
                     if(mutex.use) {
                         mutex.UnlockMutex(session->myMutex);
                     }
                     return CKR_ATTRIBUTE_TYPE_INVALID;
             }
         } else {
-            debug(1,"Requested attribute: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
+            debug(DEBUG_INFO,"Requested attribute: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
             
         }
     }
-   
-
+    
+    
     if(mutex.use) {
         mutex.UnlockMutex(session->myMutex);
     }
     return CKR_OK;
-
+    
 }
 
 CK_RV
@@ -887,7 +868,7 @@ findObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, CK_ULONG 
         mutex.UnlockMutex(session->myMutex);
     }
     return CKR_OK;
-       
+    
 }
 
 CK_RV
@@ -903,15 +884,172 @@ findObjectsFinal(CK_SESSION_HANDLE hSession)
     
     freeObjectSearchList(session);
     
-    debug(1,"Valid object ids: ");
+    debug(DEBUG_VERBOSE,"Valid object ids: ");
     cur = session->objectList;
     while(cur != NULL) {
-        debug(1,"%u ",cur->id);
+        debug(DEBUG_VERBOSE,"%u ",cur->id);
         cur = cur->nextObject;
     }
-    debug(1,"\n");
-        
+    debug(DEBUG_VERBOSE,"\n");
+    
     return CKR_OK;
+}
+
+CK_RV
+encryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hKey)
+{
+    sessionEntry *session = NULL;
+    objectEntry *object = NULL;
+    OSStatus status = 0;
+    CK_RV returnVal = CKR_OK;
+    const CSSM_KEY *cssmKey = NULL;
+    CSSM_ALGORITHMS algorithmID = CSSM_ALGID_NONE;
+    CSSM_PADDING paddingID = CSSM_PADDING_NONE;
+    CSSM_ACCESS_CREDENTIALS creds;
+    CSSM_CSP_HANDLE cspHandle;
+    SecKeyRef pubKeyRef = NULL;
+    CSSM_CONTEXT_ATTRIBUTE newAttr;
+	
+    session = findSessionEntry(hSession);
+    if(session == NULL)
+    {
+        return CKR_SESSION_HANDLE_INVALID;
+    }
+    object = getObject(session, hKey);
+    if(object == NULL)
+    {
+        return CKR_OBJECT_HANDLE_INVALID;
+    }
+    
+    algorithmID = pMechanismToCSSM_ALGID(pMechanism);
+    if(algorithmID == CKR_MECHANISM_PARAM_INVALID || algorithmID == CKR_MECHANISM_INVALID) {
+        returnVal = algorithmID;
+        goto cleanup;
+    }
+    switch(algorithmID) {
+        case CSSM_ALGID_RSA:
+        case CSSM_ALGID_MD2WithRSA:
+        case CSSM_ALGID_MD5WithRSA:
+        case CSSM_ALGID_SHA1WithRSA:
+            paddingID = CSSM_PADDING_PKCS1;
+        default:
+            paddingID = CSSM_PADDING_NONE;
+    }
+    
+    status = getPublicKeyRefForObject(object, &pubKeyRef);
+    if (status != 0)
+    {
+        debug(DEBUG_WARNING,"Error in getPublicKeyRefForObject\n");
+        returnVal = CKR_OBJECT_HANDLE_INVALID;
+        goto cleanup;
+    }
+    assert(pubKeyRef);
+    status = SecKeyGetCSPHandle(pubKeyRef, &cspHandle);
+    if (status != 0)
+    {
+        debug(DEBUG_WARNING,"Error in SecKeyGetCSPHandle\n");
+        returnVal = CKR_GENERAL_ERROR;
+        goto cleanup;
+    }
+    status = SecKeyGetCSSMKey(pubKeyRef, &cssmKey);
+    if (status != 0)
+    {
+        debug(DEBUG_WARNING,"Error getting CSSMKey\n");
+        returnVal = CKR_GENERAL_ERROR;
+        goto cleanup;
+    }
+    memset(&creds, 0, sizeof(CSSM_ACCESS_CREDENTIALS));
+    CSSM_DeleteContext(session->encryptContext);
+    session->encryptContext = 0;
+    status = CSSM_CSP_CreateAsymmetricContext(cspHandle, algorithmID, &creds, cssmKey, paddingID, &(session->encryptContext));
+    if(status != 0)
+    {
+        cssmPerror("CreateAsymmetricContext", status);
+        returnVal = CKR_GENERAL_ERROR;
+        goto cleanup;
+    }
+    newAttr.AttributeType = CSSM_ATTRIBUTE_PUBLIC_KEY;
+    newAttr.AttributeLength = sizeof(CSSM_KEY);
+    newAttr.Attribute.Data = (CSSM_DATA_PTR)cssmKey;
+    status = CSSM_UpdateContextAttributes(session->encryptContext, 1, &newAttr);
+    if(status != 0)
+    {
+        cssmPerror("UpdateContextAttributes", status);
+        returnVal = CKR_GENERAL_ERROR;
+        goto cleanup;
+    }
+	
+cleanup:
+    return returnVal;
+}
+
+CK_RV
+c_encrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen)
+{
+    sessionEntry *session = NULL;
+    CSSM_DATA plainText, cipherText, extra;
+    UInt32 bytesEncrypted = 0;
+    CSSM_RETURN status = 0;
+    CK_RV ret = CKR_OK;
+	
+    session = findSessionEntry(hSession);
+    if(session == NULL)
+    {
+        return CKR_SESSION_HANDLE_INVALID;
+    }
+    
+    if(session->encryptContext == 0) {
+        return CKR_OPERATION_NOT_INITIALIZED;
+    }
+    plainText.Data = pData;
+    plainText.Length = ulDataLen;
+	
+    if(pEncryptedData == NULL)
+    {
+        // cipherText will be created by CSSM_EncryptData, we are responsible for freeing it when done
+        cipherText.Data = NULL;
+        cipherText.Length = 0;
+    }
+    else
+    {
+        cipherText.Data = pEncryptedData;
+        cipherText.Length = *(pulEncryptedDataLen);
+    }
+    status = CSSM_EncryptData(session->encryptContext, &plainText, 1, &cipherText, 1, &bytesEncrypted, &extra);
+    if(status != 0)
+    {
+        if (status == CSSMERR_CSP_OUTPUT_LENGTH_ERROR)
+        {
+            /* dont delete the context yet */
+            if(pEncryptedData == NULL && cipherText.Data != NULL)
+            {
+                free(cipherText.Data);
+            }
+            return CKR_BUFFER_TOO_SMALL;
+        }
+        else if (status == CSSMERR_CSP_INVALID_DATA)
+        {
+            ret = CKR_DATA_INVALID;
+            goto cleanup;
+        }
+        else
+        {
+            cssmPerror("EncryptData",status);
+            ret = CKR_GENERAL_ERROR;
+            goto cleanup;
+        }
+    }
+    *pulEncryptedDataLen = bytesEncrypted;
+	
+cleanup:
+    if(pEncryptedData == NULL)
+    {
+        free(cipherText.Data);
+    }
+    CSSM_DeleteContext(session->encryptContext);
+    session->encryptContext = 0;
+	
+    return ret;
 }
 
 CK_RV
@@ -925,10 +1063,10 @@ decryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_H
     const CSSM_KEY *cssmKey = NULL;
     CSSM_ALGORITHMS algorithmID = CSSM_ALGID_NONE;
     CSSM_PADDING paddingID = CSSM_PADDING_NONE;
-        
+    
     CSSM_CSP_HANDLE cspHandle;
     const CSSM_ACCESS_CREDENTIALS *cssmCreds = NULL;
-      
+    
     session = findSessionEntry(hSession);
     if(session == NULL) {
         return CKR_SESSION_HANDLE_INVALID;
@@ -939,50 +1077,52 @@ decryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_H
         return CKR_OBJECT_HANDLE_INVALID;
     }
     
+    if(session->decryptContext != 0) {
         CSSM_DeleteContext(session->decryptContext);
-    
+        session->decryptContext = 0;
+    }
     
     if(!session->loggedIn) {
         return CKR_USER_NOT_LOGGED_IN;
     }
     
-    switch (pMechanism->mechanism) {
-        case CKM_RSA_PKCS:
-        case CKM_RSA_PKCS_OAEP:
-            paddingID   = CSSM_PADDING_PKCS1;
-        case CKM_RSA_X_509:       
-            algorithmID = CSSM_ALGID_RSA;
-            break;
-        default:
-            debug(1,"Mechanism specified that we dont know how to handle (yet?) 0x%X (%s)\n",pMechanism->mechanism, getCKMName(pMechanism->mechanism));
-            returnVal = CKR_MECHANISM_INVALID;
+    algorithmID = pMechanismToCSSM_ALGID(pMechanism);
+    if(algorithmID == CKR_MECHANISM_PARAM_INVALID || algorithmID == CKR_MECHANISM_INVALID) {
+        returnVal = algorithmID;
+        goto cleanup;
     }
-    
-    
+    switch(algorithmID) {
+        case CSSM_ALGID_RSA:
+        case CSSM_ALGID_MD2WithRSA:
+        case CSSM_ALGID_MD5WithRSA:
+        case CSSM_ALGID_SHA1WithRSA:
+            paddingID = CSSM_PADDING_PKCS1;
+        default:
+            paddingID = CSSM_PADDING_NONE;
+    }
     
     status = SecKeychainGetCSPHandle(keychainSlots[session->slot], &cspHandle);
     if (status != 0) {
-        debug(1,"Error in SecKeychainGetCSPHandle\n");
+        debug(DEBUG_WARNING,"Error in SecKeychainGetCSPHandle\n");
         returnVal = CKR_GENERAL_ERROR;
         goto cleanup;
     }
     
     status = SecKeyGetCredentials(object->storage.privateKey.keyRef, CSSM_ACL_AUTHORIZATION_DECRYPT, kSecCredentialTypeNoUI, &cssmCreds);
     if (status != 0) {
-        debug(1,"Error in SecKeyGetCredentials\n");
+        debug(DEBUG_WARNING,"Error in SecKeyGetCredentials\n");
         returnVal = CKR_GENERAL_ERROR;
         goto cleanup;
     }
     
     status = SecKeyGetCSSMKey(object->storage.privateKey.keyRef, &cssmKey);
     if (status != 0) {
-        debug(1,"Error getting CSSMKey\n");
+        debug(DEBUG_WARNING,"Error getting CSSMKey\n");
         returnVal = CKR_GENERAL_ERROR;
         goto cleanup;
     }
     
-    
-    status = CSSM_CSP_CreateAsymmetricContext(cspHandle, algorithmID, cssmCreds, cssmKey, paddingID, &(session->decryptContext));
+    ret = CSSM_CSP_CreateAsymmetricContext(cspHandle, algorithmID, cssmCreds, cssmKey, paddingID, &(session->decryptContext));
     if(ret != 0) {
         cssmPerror("CreateAsymmetricContext", status);
         returnVal = CKR_GENERAL_ERROR;
@@ -1004,7 +1144,7 @@ decrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BY
     CK_RV ret = CKR_OK;
     
     
-     
+    
     session = findSessionEntry(hSession);
     if(session == NULL) {
         return CKR_SESSION_HANDLE_INVALID;
@@ -1014,11 +1154,9 @@ decrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BY
         return CKR_USER_NOT_LOGGED_IN;
     }
     
-    /*
-    if(session->decryptContext == NULL) {
+    if(session->decryptContext == 0) {
         return CKR_OPERATION_NOT_INITIALIZED;
     }
-     */
     
     input.Data = pData;
     input.Length = ulDataLen;
@@ -1034,10 +1172,10 @@ decrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BY
         output.Length = *(pulDecryptedDataLen);
     }
     
-    status = CSSM_DecryptData(session->decryptContext, &output, 1, &input, 1, &bytesDecrypted, &extra);
+    status = CSSM_DecryptData(session->decryptContext, &input, 1, &output, 1, &bytesDecrypted, &extra);
     if(status != 0) {
         if (status == CSSMERR_CSP_OUTPUT_LENGTH_ERROR) {
-             /* dont delete the context yet */
+            /* dont delete the context yet */
             if(pDecryptedData == NULL && output.Data != NULL) {
                 free(output.Data);
             }
@@ -1054,15 +1192,14 @@ decrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BY
     }
     
     
-    *pulDecryptedDataLen = output.Length;
+    *pulDecryptedDataLen = bytesDecrypted;
     
 cleanup:
     if(pDecryptedData == NULL) {
         free(output.Data);
     }
     CSSM_DeleteContext(session->decryptContext);
-    
-    
+    session->decryptContext = 0;
     
     return ret;
 }
@@ -1094,32 +1231,28 @@ signInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HAND
         return CKR_OBJECT_HANDLE_INVALID;
     }
     
-
     CSSM_DeleteContext(session->signContext);
-    
-    
+    session->signContext = 0;
     
     if(!session->loggedIn) {
         return CKR_USER_NOT_LOGGED_IN;
     }
     
     if (object->class != CKO_PRIVATE_KEY) {
-        debug(1,"Object specified is not a private key\n");
+        debug(DEBUG_INFO,"Object specified is not a private key\n");
         returnVal = CKR_KEY_HANDLE_INVALID;
         goto cleanup;
     }
-
-    switch (pMechanism->mechanism) {
-        case CKM_RSA_PKCS:
-        case CKM_RSA_X_509:    
-            algorithmID = CSSM_ALGID_RSA;
-            break;
-        default:
-            debug(1,"Mechanism specified that we dont know how to handle (yet?) 0x%X (%s)\n",pMechanism->mechanism, getCKMName(pMechanism->mechanism));
-            returnVal = CKR_MECHANISM_INVALID;
+    
+    if(pMechanism == NULL) {
+        return CKR_MECHANISM_PARAM_INVALID;
     }
-
-
+    
+    algorithmID = pMechanismToCSSM_ALGID(pMechanism);
+    if(algorithmID == CKR_MECHANISM_PARAM_INVALID || algorithmID == CKR_MECHANISM_INVALID) {
+        return algorithmID;
+    }
+    session->signAlgorithm = CKR_MECHANISM_INVALID;
     
     cmPvcPolicy = CSSM_PVC_NONE;
     cmVersion.Major = 2;
@@ -1133,42 +1266,42 @@ signInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HAND
     
     status = SecKeyGetCSSMKey(object->storage.privateKey.keyRef, &cssmKey);
     if (status != 0) {
-        debug(1,"Error getting CSSMKey (status = %d)\n", status);
+        debug(DEBUG_WARNING,"Error getting CSSMKey (status = %d)\n", status);
         returnVal = CKR_GENERAL_ERROR;
         goto cleanup;
     }
-
+    
     status = SecKeychainItemCopyKeychain((SecKeychainItemRef)object->storage.privateKey.keyRef, &keychainRef);
     if (status != 0) {
-        debug(1,"Error in SecKeychainItemCopyKeychain\n");
+        debug(DEBUG_WARNING,"Error in SecKeychainItemCopyKeychain\n");
         goto cleanup;
     }
-
-
+    
+    
     status = SecKeychainGetCSPHandle(keychainRef, &cspHandle);
     if (status != 0) {
-        debug(1,"Error in SecKeychainGetCSPHandle\n");
+        debug(DEBUG_WARNING,"Error in SecKeychainGetCSPHandle\n");
         returnVal = CKR_GENERAL_ERROR;
         goto cleanup;
     }
-
-
+    
+    
     status = SecKeyGetCredentials(object->storage.privateKey.keyRef, CSSM_ACL_AUTHORIZATION_SIGN, kSecCredentialTypeNoUI, &cssmCreds);
     if (status != 0) {
-        debug(1,"Error in SecKeyGetCredentials (status = %d)\n", status);
+        debug(DEBUG_WARNING,"Error in SecKeyGetCredentials (status = %d)\n", status);
         returnVal = CKR_GENERAL_ERROR;
         goto cleanup;
     }
-
+    
     ret = CSSM_CSP_CreateSignatureContext(cspHandle, algorithmID, cssmCreds, cssmKey, &(session->signContext));
     if (ret != 0) {
         cssmPerror("CSSM_CreateSignatureContext", ret);
         returnVal = CKR_GENERAL_ERROR;
         goto cleanup;
     }
-        
+    
 cleanup:
-
+    
     return returnVal;
 }
 
@@ -1191,11 +1324,9 @@ sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_
         return CKR_USER_NOT_LOGGED_IN;
     }
     
-    /*
-    if(session->signContext == NULL) {
+    if(session->signContext == 0) {
         return CKR_OPERATION_NOT_INITIALIZED;
     }
-     */
     
     input.Data = pData;
     input.Length = ulDataLen;
@@ -1206,22 +1337,209 @@ sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_
     
     status = CSSM_SignData(session->signContext, &input, 1, CSSM_ALGID_NONE, &output);
     if(status != 0) {
-        if(status == CSSMERR_CSP_OUTPUT_LENGTH_ERROR) {
+        /* dont delete the context yet */
+        cssmPerror("SignData",status);
+        if(status == CSSMERR_CSP_OPERATION_AUTH_DENIED) {
+			ret = CKR_FUNCTION_REJECTED;
+        } else if(status == CSSMERR_CSP_OUTPUT_LENGTH_ERROR) {
+            ret = CKR_BUFFER_TOO_SMALL;
+        } else {
+            ret = CKR_GENERAL_ERROR;
+        }
+        return ret;
+    } else {
+		*pulSignatureLen = output.Length;
+    }
+    
+    CSSM_DeleteContext(session->signContext);
+    session->signContext = 0;
+    
+    
+    return ret;
+}
+
+CK_RV
+signUpdate(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pPart, CK_ULONG ulPartLen)
+{
+	sessionEntry *session = NULL;
+    CSSM_DATA input;    
+    CSSM_RETURN status = 0;
+    CK_RV ret = CKR_OK;
+    
+    
+    
+    session = findSessionEntry(hSession);
+    if(session == NULL) {
+        return CKR_SESSION_HANDLE_INVALID;
+    }
+    
+    if(!session->loggedIn) {
+        return CKR_USER_NOT_LOGGED_IN;
+    }
+    
+    if(session->signContext == 0) {
+        return CKR_OPERATION_NOT_INITIALIZED;
+    }
+    
+    input.Data = pPart;
+    input.Length = ulPartLen;
+    
+    
+    status = CSSM_SignDataUpdate(session->signContext, &input, 1);
+    if(status != 0) {
+        cssmPerror("SignDataUpdate",status);
+        ret = CKR_GENERAL_ERROR;
+    }
+    
+    
+    return ret;
+}
+
+CK_RV
+signFinal(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen)
+{
+	sessionEntry *session = NULL;
+    CSSM_DATA output;    
+    CSSM_RETURN status = 0;
+    CK_RV ret = CKR_OK;
+    
+    
+    
+    session = findSessionEntry(hSession);
+    if(session == NULL) {
+        return CKR_SESSION_HANDLE_INVALID;
+    }
+    
+    if(!session->loggedIn) {
+        return CKR_USER_NOT_LOGGED_IN;
+    }
+    
+    if(session->signContext == 0) {
+        return CKR_OPERATION_NOT_INITIALIZED;
+    }
+	
+	output.Data = pSignature;
+    output.Length = 0;    
+    
+    status = CSSM_SignDataFinal(session->signContext, &output);
+    if(status != 0) {
+		if(status == CSSMERR_CSP_OPERATION_AUTH_DENIED) {
+			ret = CKR_FUNCTION_REJECTED;
+		} else {
+			ret = CKR_GENERAL_ERROR;
+		}
+    }
+	
+	*pulSignatureLen = output.Length;
+    
+    
+    return ret;
+}
+
+CK_RV
+verifyInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hKey)
+{
+    sessionEntry *session = NULL;
+    objectEntry *object = NULL;
+    OSStatus status = 0;
+    CSSM_RETURN ret = CSSM_OK;
+    CK_RV returnVal = CKR_OK;
+    CSSM_CSP_HANDLE cspHandle = 0;
+    const CSSM_KEY *cssmKey = NULL;
+    CSSM_ALGORITHMS algorithmID = CSSM_ALGID_NONE;
+    SecKeyRef pubKeyRef = NULL;
+	
+    session = findSessionEntry(hSession);
+    if(session == NULL)
+    {
+        return CKR_SESSION_HANDLE_INVALID;
+    }
+    object = getObject(session, hKey);
+    if(object == NULL)
+    {
+        return CKR_OBJECT_HANDLE_INVALID;
+    }
+    
+    algorithmID = pMechanismToCSSM_ALGID(pMechanism);
+    if(algorithmID == CKR_MECHANISM_PARAM_INVALID || algorithmID == CKR_MECHANISM_INVALID) {
+        returnVal = algorithmID;
+        goto cleanup;
+    }
+    
+    status = getPublicKeyRefForObject(object, &pubKeyRef);
+    if (status != 0)
+    {
+        debug(DEBUG_WARNING,"Error in getPublicKeyRefForObject\n");
+        returnVal = CKR_OBJECT_HANDLE_INVALID;
+        goto cleanup;
+    }
+    assert(pubKeyRef);
+    status = SecKeyGetCSPHandle(pubKeyRef, &cspHandle);
+    if (status != 0)
+    {
+        debug(DEBUG_WARNING,"Error in SecKeyGetCSPHandle\n");
+        returnVal = CKR_GENERAL_ERROR;
+        goto cleanup;
+    }
+    status = SecKeyGetCSSMKey(pubKeyRef, &cssmKey);
+    if (status != 0)
+    {
+        debug(DEBUG_WARNING,"Error getting CSSMKey\n");
+        returnVal = CKR_GENERAL_ERROR;
+        goto cleanup;
+    }
+    CSSM_DeleteContext(session->verifyContext);
+    session->verifyContext = 0;
+    ret = CSSM_CSP_CreateSignatureContext(cspHandle, algorithmID, NULL, cssmKey, &(session->verifyContext));
+    if (ret != 0)
+    {
+        cssmPerror("CSSM_CreateSignatureContext", ret);
+        returnVal = CKR_GENERAL_ERROR;
+        goto cleanup;
+    }
+cleanup:
+	
+    return returnVal;
+}
+
+CK_RV
+c_verify(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG ulSignatureLen)
+{
+    sessionEntry *session = NULL;
+    CSSM_DATA inData, signature;
+    CSSM_RETURN status = 0;
+    CK_RV ret = CKR_OK;
+	
+    session = findSessionEntry(hSession);
+    if(session == NULL)
+    {
+        return CKR_SESSION_HANDLE_INVALID;
+    }
+    inData.Data = pData;
+    inData.Length = ulDataLen;
+    signature.Data = pSignature;
+    signature.Length = ulSignatureLen;
+    if(session->verifyContext == 0) {
+        return CKR_OPERATION_NOT_INITIALIZED;
+    }
+    status = CSSM_VerifyData(session->verifyContext, &inData, 1, CSSM_ALGID_NONE, &signature);
+    if(status != 0)
+    {
+        if(status == CSSMERR_CSP_OUTPUT_LENGTH_ERROR)
+        {
             /* dont delete the context yet */
             return CKR_BUFFER_TOO_SMALL;
-        } else {
-            cssmPerror("SignData",status);
+        }
+        else
+        {
+            cssmPerror("VerifyData",status);
             ret = CKR_GENERAL_ERROR;
         }
     }
-    
-    *pulSignatureLen = output.Length;
-    
-    
-    CSSM_DeleteContext(session->signContext);
-
-    
-    return ret;
+    CSSM_DeleteContext(session->verifyContext);
+    session->verifyContext;
+	
+	return ret;
 }
 
 CK_RV
@@ -1237,7 +1555,7 @@ generateRandom(CK_SESSION_HANDLE hSession ,CK_BYTE_PTR data,CK_ULONG dataLen)
     CSSM_CC_HANDLE randomHandle;
     CSSM_DATA randomData;
     OSStatus status = 0;
-
+    
     CSSM_RETURN ret = CSSM_OK;
     CK_RV returnVal = CKR_OK;
     CSSM_CSP_HANDLE cspHandle = 0;
@@ -1251,7 +1569,7 @@ generateRandom(CK_SESSION_HANDLE hSession ,CK_BYTE_PTR data,CK_ULONG dataLen)
         returnVal = CKR_SESSION_HANDLE_INVALID;
         goto cleanup;
     }
-   
+    
     cmPvcPolicy = CSSM_PVC_NONE;
     cmVersion.Major = 2;
     cmVersion.Minor = 0;    
@@ -1266,7 +1584,7 @@ generateRandom(CK_SESSION_HANDLE hSession ,CK_BYTE_PTR data,CK_ULONG dataLen)
     
     status = SecKeychainGetCSPHandle(keychainSlots[session->slot], &cspHandle);
     if (status != 0) {
-        debug(1,"Error in SecKeychainGetCSPHandle\n");
+        debug(DEBUG_WARNING,"Error in SecKeychainGetCSPHandle\n");
         returnVal = CKR_GENERAL_ERROR;
         goto cleanup;
     }

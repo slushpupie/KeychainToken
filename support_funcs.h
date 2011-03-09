@@ -54,6 +54,8 @@ objectEntry * makeObjectFromCertificateRef(SecCertificateRef certRef, CK_OBJECT_
 objectEntry * makeObjectFromIdRef(SecIdentityRef idRef, CK_OBJECT_CLASS class);
 objectEntry * getObject(sessionEntry *session, CK_OBJECT_HANDLE hObject);
 
+OSStatus getPublicKeyRefForObject(objectEntry *object, SecKeyRef *publicKeyRef);
+
 void addObjectToSearchResults(sessionEntry *session, objectEntry *object);
 void removeObjectFromSearchResults(sessionEntry *session, objectEntry *object);
 void freeObjectSearchList(sessionEntry *session);
@@ -70,4 +72,5 @@ void setString(char *in, char *out, int len);
 char * basename(const char *input);
 void setDateFromASN1Time(const ASN1_TIME *aTime, char *out);
 
+CSSM_ALGORITHMS pMechanismToCSSM_ALGID(CK_MECHANISM_PTR pMechanism);
 #endif

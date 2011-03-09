@@ -32,7 +32,7 @@ static char* Copy_CFStringRefToCString(const CFStringRef pCFStringRef)
 }
 
 
-#define kAppCFStr CFSTR("com.apple.KeychainToken")
+#define kAppCFStr CFSTR("com.slushpupie.KeychainToken")
 
 
 

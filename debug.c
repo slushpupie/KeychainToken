@@ -582,6 +582,20 @@ const char * getCKRName(CK_RV rv) {
 }
 
 
+const char * getCKCName(CK_CERTIFICATE_TYPE ctype) {
+    switch (ctype) {
+        case CKC_X_509: return "CKC_X_509";
+        case CKC_X_509_ATTR_CERT: return "CKC_X_509_ATTR_CERT";
+        case CKC_WTLS: return "CKC_WTLS";
+        case CKC_VENDOR_DEFINED: return "CKC_VENDOR_DEFINED";
+           /** Netscap Specific **/
+        case CKC_NSS: return "CKC_NSS";
+        default:
+            return "";
+    }
+}
+
+
 void
 debug(int level, const char *format, ...) {
 #ifdef DEBUG 

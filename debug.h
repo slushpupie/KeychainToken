@@ -16,7 +16,15 @@
 #include "mypkcs11.h"
 
 #define DEBUG 1
-#define DEBUG_LEVEL 10
+
+#define DEBUG_CRITICAL  1
+#define DEBUG_WARNING   2
+#define DEBUG_IMPORTANT 3
+#define DEBUG_INFO      4
+#define DEBUG_VERBOSE   5
+
+#define DEBUG_LEVEL DEBUG_VERBOSE
+
 
 
 void debug(int level, const char* format, ...);
@@ -25,7 +33,7 @@ const char * getCKRName(CK_RV rv);
 const char * getCKAName(CK_ATTRIBUTE_TYPE attrib);
 const char * getCKOName(CK_OBJECT_CLASS class);
 const char * getCKMName(CK_MECHANISM_TYPE mech);
-
+const char * getCKCName(CK_CERTIFICATE_TYPE ctype);
 char *hexify(unsigned char *data, int len);
 char *stringify(unsigned char *str, int length);
 

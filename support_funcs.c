@@ -22,7 +22,7 @@ updateSlotList()
     
     status = SecKeychainCopySearchList(&kcSrchList);
     if (status != 0) {
-        debug(1, "%s: Failed to copy keychain search list\n", __FUNCTION__);
+        debug(DEBUG_WARNING, "%s: Failed to copy keychain search list\n", __FUNCTION__);
         return 0;
     }
     
@@ -50,19 +50,25 @@ updateSlotList()
             memset(keychainName, 0, sizeof(keychainName));
             status = SecKeychainGetPath((SecKeychainRef)CFArrayGetValueAtIndex(array, i), &keychainLen, keychainName);
             
+            
             if (status != 0) {
                 continue;
             }
+            
+            debug(DEBUG_VERBOSE, "Keychain %s ", keychainName);
+                  
             if(useWhitelist()) {
                 if(isKeychainWhitelisted(keychainName) || isKeychainGreylisted(keychainName)) {
                     keychainSlots[j++] = (SecKeychainRef) CFArrayGetValueAtIndex(array, i);
+                    debug(DEBUG_VERBOSE, "listed");
                 }
             } else {
                 if(!isKeychainBlacklisted(keychainName)) {
                     keychainSlots[j++] = (SecKeychainRef) CFArrayGetValueAtIndex(array,i);
+                    debug(DEBUG_VERBOSE, "listed");
                 }
             }
-            
+            debug(DEBUG_VERBOSE,"\n");
         }
         
         return j;
@@ -176,7 +182,7 @@ addObject(sessionEntry *session, objectEntry *object)
     objectEntry *cur;
     
     object->id = session->objectCounter++;
-    debug(1,"Adding object %u\n",object->id);
+    debug(DEBUG_VERBOSE,"Adding object %u\n",object->id);
     if(session->objectList == NULL) {
         session->objectList = object;
         object->nextObject = NULL;
@@ -226,7 +232,7 @@ freeAllObjects(sessionEntry *session)
 {
     objectEntry *cur,*next;
     
-    debug(1,"Freeing all objects for session\n");
+    debug(DEBUG_VERBOSE,"Freeing all objects for session\n");
     cur = session->objectList;
     
     while(cur !=NULL) {
@@ -244,7 +250,7 @@ freeObject(objectEntry *object)
 {
     if(object == NULL)
         return;
-    debug(1," Deleting object %u\n",object->id);
+    debug(DEBUG_VERBOSE," Deleting object %u\n",object->id);
     
     /* First free up any internal data */
     switch(object->class) {
@@ -305,7 +311,7 @@ makeObjectFromCertificateRef(SecCertificateRef certRef, CK_OBJECT_CLASS class)
         case CKO_CERTIFICATE:
             object->storage.certificate.x509 = d2i_X509(NULL, (void *) &pData, certData.Length);
             if(!object->storage.certificate.x509) {
-                debug(1,"OpenSSL failed to parse certificate\n");
+                debug(DEBUG_IMPORTANT,"OpenSSL failed to parse certificate\n");
                 free(object);
                 return NULL;
             }
@@ -318,11 +324,11 @@ makeObjectFromCertificateRef(SecCertificateRef certRef, CK_OBJECT_CLASS class)
             
             
             status = SecCertificateCopyPublicKey(certRef, &(object->storage.publicKey.keyRef));
-            memcpy(object->storage.publicKey.keyId,digest,SHA_DIGEST_LENGTH);
             if (status != 0) {
                 free(object);
                 return NULL;
             }
+			memcpy(object->storage.publicKey.keyId,digest,SHA_DIGEST_LENGTH);
             
             CFRetain(object->storage.publicKey.keyRef);
             return object;
@@ -368,7 +374,7 @@ makeObjectFromIdRef(SecIdentityRef idRef, CK_OBJECT_CLASS class)
         case CKO_CERTIFICATE:
             object->storage.certificate.x509 = d2i_X509(NULL, (void *) &pData, certData.Length);
             if(!object->storage.certificate.x509) {
-                debug(1,"OpenSSL failed to parse certificate\n");
+                debug(DEBUG_IMPORTANT,"OpenSSL failed to parse certificate\n");
                 free(object);
                 return NULL;
             }
@@ -395,7 +401,7 @@ makeObjectFromIdRef(SecIdentityRef idRef, CK_OBJECT_CLASS class)
         case CKO_PRIVATE_KEY:
             object->storage.certificate.x509 = d2i_X509(NULL, (void *) &pData, certData.Length);
             if(!object->storage.certificate.x509) {
-                debug(1,"OpenSSL failed to parse certificate\n");
+                debug(DEBUG_IMPORTANT,"OpenSSL failed to parse certificate\n");
                 free(object);
                 return NULL;
             }
@@ -405,12 +411,12 @@ makeObjectFromIdRef(SecIdentityRef idRef, CK_OBJECT_CLASS class)
                 free(object);
                 return NULL;
             }
-            debug(1,"*PrivateKey SecKeyRef=0x%X\n",object->storage.privateKey.keyRef);
+            debug(DEBUG_VERBOSE,"*PrivateKey SecKeyRef=0x%X\n",object->storage.privateKey.keyRef);
             object->storage.privateKey.idRef = idRef;
             memcpy(object->storage.privateKey.keyId,digest,SHA_DIGEST_LENGTH);
             CFRetain(object->storage.privateKey.keyRef);
             CFRetain(object->storage.privateKey.idRef);
-        
+            
             return object;
             
     }
@@ -424,7 +430,7 @@ getObject(sessionEntry *session, CK_OBJECT_HANDLE hObject)
     objectEntry *object;
     
     object = session->objectList;
-    debug(1,"Requested object id %u\n",hObject);
+    debug(DEBUG_VERBOSE,"Requested object id %u\n",hObject);
     
     while(object != NULL) {
         if(object->id == hObject) {
@@ -434,6 +440,36 @@ getObject(sessionEntry *session, CK_OBJECT_HANDLE hObject)
     }
     
     return NULL;
+}
+
+OSStatus
+getPublicKeyRefForObject(objectEntry *object, SecKeyRef *publicKeyRef)
+{
+    OSStatus status = -1;
+	
+    if(object && publicKeyRef)
+    {
+        // get the right keyref and CSP for the public key
+        // (cf. http://lists.apple.com/archives/apple-cdsa/2007/Aug/msg00014.html )
+        switch(object->class)  
+        {
+            case CKO_CERTIFICATE:
+                // in case of a certificate get the public key ref
+                status = SecCertificateCopyPublicKey(object->storage.certificate.certRef, publicKeyRef);
+                if(status != 0)  
+                {
+                    debug(DEBUG_WARNING,"Error in SecCertificateCopyPublicKey\n");
+                }
+                break;
+            case CKO_PUBLIC_KEY:
+                *publicKeyRef = object->storage.publicKey.keyRef;
+                status = 0;
+                break;
+            default:
+                debug(DEBUG_IMPORTANT,"Object must be certificate or private key\n");
+        }
+    }
+    return status;
 }
 
 void
@@ -517,78 +553,83 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
     
     SecCertificateGetData(object->storage.certificate.certRef, &certData);
     if (status != 0) {
-        debug(1,"Error getting certificate data");
+        debug(DEBUG_IMPORTANT,"Error getting certificate data");
         return CKR_GENERAL_ERROR;
     }
     pData = certData.Data;
     
-    debug(1,"Getting certificate attributes\n");
+    debug(DEBUG_VERBOSE,"Getting certificate attributes\n");
     for (i = 0 ; i < ulCount; i++) {
         switch (pTemplate[i].type) {
                 
                 
             case CKA_CLASS:
-                debug(1,"  CKA_CLASS\n");
+                debug(DEBUG_VERBOSE,"  CKA_CLASS\n");
                 if (pTemplate[i].pValue != NULL) {
                     if (pTemplate[i].ulValueLen >= sizeof(object->class)) {
                         memcpy(pTemplate[i].pValue, &object->class, sizeof(object->class));
+                        debug(DEBUG_VERBOSE,"    0x%X (%s)\n", object->class, getCKOName(object->class) );
                     } else {
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
                 } else {
-                    debug(1,"    sizerequest\n");
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = sizeof(object->class);
                 break;
                 
             case CKA_TOKEN:
-                debug(1,"  CKA_TOKEN\n");
+                debug(DEBUG_VERBOSE,"  CKA_TOKEN\n");
                 if (pTemplate[i].pValue != NULL) {
                     CK_BBOOL t = CK_TRUE;
                     if (pTemplate[i].ulValueLen >= sizeof(CK_BBOOL)) {
                         memcpy(pTemplate[i].pValue, &t, sizeof(CK_BBOOL));
+                        debug(DEBUG_VERBOSE,"    %X\n",t);
                     } else {
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
                 } else {
-                    debug(1,"    sizerequest\n");
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = sizeof(CK_BBOOL);
                 break;
                 
             case CKA_PRIVATE:
-                debug(1,"  CKA_PRIVATE\n");
+                debug(DEBUG_VERBOSE,"  CKA_PRIVATE\n");
                 if (pTemplate[i].pValue != NULL) {
                     CK_BBOOL f = CK_FALSE;
                     if (pTemplate[i].ulValueLen >= sizeof(CK_BBOOL)) {
                         memcpy(pTemplate[i].pValue, &f, sizeof(CK_BBOOL));
+                        debug(DEBUG_VERBOSE,"    %X\n",f);
                     } else {
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
                 } else {
-                    debug(1,"    sizerequest\n");
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = sizeof(CK_BBOOL);
                 break;
                 
             case CKA_MODIFIABLE:
-                debug(1,"  CKA_MODIFIABLE\n");
+                debug(DEBUG_VERBOSE,"  CKA_MODIFIABLE\n");
                 if (pTemplate[i].pValue != NULL) {
                     CK_BBOOL f = CK_FALSE;
                     if (pTemplate[i].ulValueLen >= sizeof(CK_BBOOL)) {
                         memcpy(pTemplate[i].pValue, &f, sizeof(CK_BBOOL));
+                        debug(DEBUG_VERBOSE,"    %X\n",f);
                     } else {
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
                 } else {
-                    debug(1,"    sizerequest\n");
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = sizeof(CK_BBOOL);
                 break;
                 
             case CKA_LABEL:
-                debug(1,"  CKA_LABEL\n");
+                debug(DEBUG_VERBOSE,"  CKA_LABEL\n");
             {
+#if 0
                 
                 char *sn = X509_NAME_oneline(object->storage.certificate.x509->cert_info->subject, NULL, 256);
                 
@@ -597,45 +638,75 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                 if (pTemplate[i].pValue != NULL) {
                     if (pTemplate[i].ulValueLen >= n) {
                         memcpy(pTemplate[i].pValue, sn, n); /*not null terminated*/
+                        debug(DEBUG_VERBOSE,"    %s\n",sn);
                     } else {
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
                 } else {
-                    debug(1,"    sizerequest\n");
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = n;
+#else
+                
+                char *sn = X509_NAME_oneline(object->storage.certificate.x509->cert_info->subject, NULL, 256);
+                char tag[] = "(  )";
+                
+                
+                int m = strlen(sn);
+                int n = strlen(tag);
+                if (pTemplate[i].pValue != NULL) {
+                    if (pTemplate[i].ulValueLen >= m + n) {
+                        memcpy(pTemplate[i].pValue, sn, m); /*not null terminated*/
+                        sprintf(tag,"(%02d)",object->id);
+                        memcpy(pTemplate[i].pValue+m, tag, n);
+                        debug(DEBUG_VERBOSE,"    %s%s\n",sn,tag);
+                    } else {
+                        rv = CKR_BUFFER_TOO_SMALL;
+                    }
+                } else {
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
+                }
+                pTemplate[i].ulValueLen = m+n;
+                
+#endif
+                
+                
+                
             }
                 break;
                 
                 
                 
+                
             case CKA_CERTIFICATE_TYPE:
-                debug(1,"  CKA_CERTIFICATE_TYPE\n");
+                debug(DEBUG_VERBOSE,"  CKA_CERTIFICATE_TYPE\n");
                 if (pTemplate[i].pValue != NULL) {
                     if (pTemplate[i].ulValueLen >= sizeof(CK_CERTIFICATE_TYPE)) {
                         CK_CERTIFICATE_TYPE certType = CKC_X_509;
                         memcpy(pTemplate[i].pValue, &certType, sizeof(CK_CERTIFICATE_TYPE));
+                        debug(DEBUG_VERBOSE,"    0x%X (%s)\n",certType, getCKCName(certType));
                     } else {
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
                 } else {
-                    debug(1,"    sizerequest\n");
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = sizeof(CK_CERTIFICATE_TYPE);
                 break;
                 
             case CKA_TRUSTED:
-                debug(1,"  CKA_TRUSTED\n");
+                debug(DEBUG_VERBOSE,"  CKA_TRUSTED\n");
                 if(object->storage.certificate.havePrivateKey) {
                     if(pTemplate[i].pValue != NULL) {
                         if(pTemplate[i].ulValueLen >= sizeof(CK_BBOOL)) {
                             CK_BBOOL trusted = CK_TRUE;
                             memcpy(pTemplate[i].pValue, &trusted, sizeof(CK_BBOOL));
+                            debug(DEBUG_VERBOSE,"    %X\n",trusted);
                         } else {
                             rv = CKR_BUFFER_TOO_SMALL;
                         }
                     } else {
-                        debug(1,"    sizerequest\n");
+                        debug(DEBUG_VERBOSE,"    sizerequest\n");
                     }
                     pTemplate[i].ulValueLen = sizeof(CK_ULONG);
                 }
@@ -643,7 +714,7 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                 break;
                 
             case CKA_CERTIFICATE_CATEGORY:
-                debug(1,"  CKA_CERTIFICATE_CATEGORY\n");
+                debug(DEBUG_VERBOSE,"  CKA_CERTIFICATE_CATEGORY\n");
                 /* 0 = unspecified (default)
                  * 1 = token user (priv-key availible)
                  * 2 = CA cert
@@ -654,18 +725,19 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                         if(pTemplate[i].ulValueLen >= sizeof(CK_ULONG)) {
                             CK_ULONG certCat = 1;
                             memcpy(pTemplate[i].pValue, &certCat, sizeof(CK_ULONG));
+                            debug(DEBUG_VERBOSE,"    %X\n",certCat);
                         } else {
                             rv = CKR_BUFFER_TOO_SMALL;
                         }
                     } else {
-                        debug(1,"    sizerequest\n");
+                        debug(DEBUG_VERBOSE,"    sizerequest\n");
                     }
                     pTemplate[i].ulValueLen = sizeof(CK_ULONG);
                 }
                 break;
                 
             case CKA_CHECK_VALUE:
-                debug(1,"  CKA_CHECK_VALUE\n");
+                debug(DEBUG_VERBOSE,"  CKA_CHECK_VALUE\n");
                 /* The value of this attribute is derived from the certificate by 
                  * taking the first three bytes of the SHA-1 hash of the certificate
                  * object’s CKA_VALUE attribute. 
@@ -676,17 +748,18 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                 if(pTemplate[i].pValue != NULL) {
                     if(pTemplate[i].ulValueLen >= 3) {
                         memcpy(pTemplate[i].pValue, object->storage.certificate.keyId, 3);
+                        debug(DEBUG_VERBOSE,"    %X\n",pTemplate[i].pValue);
                     } else {
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
                 } else {
-                    debug(1,"    sizerequest\n");
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = 3;
                 break;
                 
             case CKA_START_DATE:
-                debug(1,"  CKA_START_DATE\n");
+                debug(DEBUG_VERBOSE,"  CKA_START_DATE\n");
                 if(pTemplate[i].pValue != NULL) {
                     if(pTemplate[i].ulValueLen >= 8) {
                         setDateFromASN1Time(object->storage.certificate.x509->cert_info->validity->notBefore, pTemplate[i].pValue);
@@ -694,13 +767,13 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
                 } else {
-                    debug(1,"    sizerequest\n");
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = 8;
                 break;
                 
             case CKA_END_DATE:
-                debug(1,"  CKA_END_DATE\n");
+                debug(DEBUG_VERBOSE,"  CKA_END_DATE\n");
                 if(pTemplate[i].pValue != NULL) {
                     if(pTemplate[i].ulValueLen >= 8) {
                         setDateFromASN1Time(object->storage.certificate.x509->cert_info->validity->notAfter, pTemplate[i].pValue);
@@ -708,13 +781,13 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
                 } else {
-                    debug(1,"    sizerequest\n");
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = 8;
                 break;
                 
             case CKA_SUBJECT:
-                debug(1,"  CKA_SUBJECT\n");
+                debug(DEBUG_VERBOSE,"  CKA_SUBJECT\n");
                 /* DER-encoded certificate subject name */
                 n = i2d_X509_NAME(object->storage.certificate.x509->cert_info->subject, NULL);
                 
@@ -725,31 +798,31 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
                 } else {
-                    debug(1,"    sizerequest\n");
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = n;
                 
                 break;
                 
             case CKA_ID:
-                debug(1,"  CKA_ID\n");
+                debug(DEBUG_VERBOSE,"  CKA_ID\n");
                 /* Key identifier for pub/pri keypair */
                 if (pTemplate[i].pValue != NULL) {
                     if (pTemplate[i].ulValueLen >= SHA_DIGEST_LENGTH) {
-                        debug(1,"     %s\n",hexify(object->storage.certificate.keyId, SHA_DIGEST_LENGTH));
+                        debug(DEBUG_VERBOSE,"     %s\n",hexify(object->storage.certificate.keyId, SHA_DIGEST_LENGTH));
                         memcpy(pTemplate[i].pValue, &object->storage.certificate.keyId, SHA_DIGEST_LENGTH);
                     } else {
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
                 } else {
-                    debug(1,"    sizerequest\n");
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = SHA_DIGEST_LENGTH;
                 
                 break;
                 
             case CKA_ISSUER:
-                debug(1,"  CKA_ISSUER\n");
+                debug(DEBUG_VERBOSE,"  CKA_ISSUER\n");
                 /* DER-encoded certificate issuer name */
                 n = i2d_X509_NAME(object->storage.certificate.x509->cert_info->issuer, NULL);
                 
@@ -760,14 +833,14 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
                 } else {
-                    debug(1,"    sizerequest\n");
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = n;
                 
                 break;
                 
             case CKA_SERIAL_NUMBER:
-                debug(1,"  CKA_SERIAL_NUMBER\n");
+                debug(DEBUG_VERBOSE,"  CKA_SERIAL_NUMBER\n");
                 /* DER-encoded certificate serial number */
                 n = i2d_ASN1_INTEGER(object->storage.certificate.x509->cert_info->serialNumber, NULL);
                 
@@ -778,14 +851,14 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
                 } else {
-                    debug(1,"    sizerequest\n");
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = n;
                 
                 break;
                 
             case CKA_VALUE:
-                debug(1,"  CKA_VALUE\n");
+                debug(DEBUG_VERBOSE,"  CKA_VALUE\n");
                 if (pTemplate[i].pValue != NULL) {
                     if (pTemplate[i].ulValueLen >= certData.Length) {
                         memcpy(pTemplate[i].pValue, certData.Data, certData.Length);
@@ -793,7 +866,7 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
                 } else {
-                    debug(1,"    sizerequest\n");
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
                 }
                 pTemplate[i].ulValueLen = certData.Length;
                 
@@ -801,28 +874,28 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                 
                 
             case CKA_URL:
-                debug(1,"  CKA_URL\n");
+                debug(DEBUG_VERBOSE,"  CKA_URL\n");
                 /* RFC2279 string of the URL where certificate can be obtained */
                 if (object->class != CKO_CERTIFICATE) {
                     rv = CKR_ATTRIBUTE_TYPE_INVALID;
                 }
                 
             case CKA_HASH_OF_SUBJECT_PUBLIC_KEY:
-                debug(1,"  CKA_HASH_OF_SUBJECT_PUBLIC_KEY\n");
+                debug(DEBUG_VERBOSE,"  CKA_HASH_OF_SUBJECT_PUBLIC_KEY\n");
                 /* SHA-1 hash of the subject public key */
                 if (object->class != CKO_CERTIFICATE) {
                     rv = CKR_ATTRIBUTE_TYPE_INVALID;
                 }
                 
             case CKA_HASH_OF_ISSUER_PUBLIC_KEY:
-                debug(1,"  CKA_HASH_OF_ISSUER_PUBLIC_KEY\n");
+                debug(DEBUG_VERBOSE,"  CKA_HASH_OF_ISSUER_PUBLIC_KEY\n");
                 /* SHA-1 hash of the issuer public key */
                 if (object->class != CKO_CERTIFICATE) {
                     rv = CKR_ATTRIBUTE_TYPE_INVALID;
                 }
                 
             case CKA_JAVA_MIDP_SECURITY_DOMAIN:
-                debug(1,"  CKA_JAVA_MIDP_SECURITY_DOMAIN\n");
+                debug(DEBUG_VERBOSE,"  CKA_JAVA_MIDP_SECURITY_DOMAIN\n");
                 /* Java MIDP security domain:
                  * 0 = unspecified
                  * 1 = manufacturer
@@ -834,13 +907,13 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                 }
                 
             case CKA_NSS_EMAIL:
-                debug(1,"  CKA_NSS_EMAIL\n");
+                debug(DEBUG_VERBOSE,"  CKA_NSS_EMAIL\n");
                 /* Not supported */
                 pTemplate[i].ulValueLen = -1;
                 break;
                 
             default:
-                debug(1,"Unknown CKO_CERTIFICATE attribute requested: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
+                debug(DEBUG_VERBOSE,"Unknown CKO_CERTIFICATE attribute requested: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
                 rv = CKR_ATTRIBUTE_TYPE_INVALID;
                 
         }
@@ -892,7 +965,6 @@ getAttributeValuePublicKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_U
                 /* Key identifier for key */
                 if (pTemplate[i].pValue != NULL) {
                     if (pTemplate[i].ulValueLen >= SHA_DIGEST_LENGTH) {
-                        debug(1,"     %s\n",hexify(object->storage.publicKey.keyId, SHA_DIGEST_LENGTH));
                         memcpy(pTemplate[i].pValue, &object->storage.publicKey.keyId, SHA_DIGEST_LENGTH);
                     } else {
                         rv = CKR_BUFFER_TOO_SMALL;
@@ -978,16 +1050,19 @@ getAttributeValuePublicKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_U
                 EVP_PKEY *rsa = NULL;
                 rsa = X509_get_pubkey(object->storage.publicKey.x509);
                 
-                
-                len = BN_num_bytes(rsa->pkey.rsa->n);
-                if(pTemplate[i].pValue != NULL) {
-                    if(pTemplate[i].ulValueLen >= len) {
-                        len = BN_bn2bin(rsa->pkey.rsa->n, (unsigned char *) pTemplate[i].pValue);
-                    } else {
-                        rv = CKR_BUFFER_TOO_SMALL;
-                    }
-                } 
-                pTemplate[i].ulValueLen = len;
+                if (!rsa) {
+					rv = CKR_ATTRIBUTE_TYPE_INVALID;
+				} else {
+					len = BN_num_bytes(rsa->pkey.rsa->n);
+					if(pTemplate[i].pValue != NULL) {
+						if(pTemplate[i].ulValueLen >= len) {
+							len = BN_bn2bin(rsa->pkey.rsa->n, (unsigned char *) pTemplate[i].pValue);
+						} else {
+							rv = CKR_BUFFER_TOO_SMALL;
+						}
+					}
+					pTemplate[i].ulValueLen = len;
+				}
             }         
                 break;
             case CKA_MODULUS_BITS: 
@@ -1026,7 +1101,8 @@ getAttributeValuePublicKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_U
             }         
                 break;    
             default:
-                debug(1,"Unknown CKO_PUBLIC_KEY attribute requested: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
+                pTemplate[i].ulValueLen = -1;
+                debug(DEBUG_INFO,"Unknown CKO_PUBLIC_KEY attribute requested: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
                 rv = CKR_ATTRIBUTE_TYPE_INVALID;
                 
                 
@@ -1043,7 +1119,7 @@ getAttributeValuePrivateKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_
     CK_RV rv = CKR_OK;
     
     for (i = 0 ; i < ulCount; i++) {
-        debug(1,"  %s (0x%X)\n",getCKAName(pTemplate[i].type), pTemplate[i].type);
+        debug(DEBUG_VERBOSE,"  %s (0x%X)\n",getCKAName(pTemplate[i].type), pTemplate[i].type);
         switch (pTemplate[i].type) {
             case CKA_CLASS:
                 if (pTemplate[i].pValue != NULL) {
@@ -1059,7 +1135,29 @@ getAttributeValuePrivateKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_
             case CKA_TOKEN:
             case CKA_PRIVATE:
             case CKA_MODIFIABLE:
+                break;
             case CKA_LABEL:
+            {
+                char *sn = X509_NAME_oneline(object->storage.certificate.x509->cert_info->subject, NULL, 256);
+                char tag[] = "(  )";
+                
+                
+                int m = strlen(sn);
+                int n = strlen(tag);
+                if (pTemplate[i].pValue != NULL) {
+                    if (pTemplate[i].ulValueLen >= m + n) {
+                        memcpy(pTemplate[i].pValue, sn, m); /*not null terminated*/
+                        sprintf(tag,"(%02d)",object->id);
+                        memcpy(pTemplate[i].pValue+m, tag, n);
+                        debug(DEBUG_VERBOSE,"    %s%s\n",sn,tag);
+                    } else {
+                        rv = CKR_BUFFER_TOO_SMALL;
+                    }
+                } else {
+                    debug(DEBUG_VERBOSE,"    sizerequest\n");
+                }
+                pTemplate[i].ulValueLen = m+n;
+            }
                 break;
                 
             case CKA_KEY_TYPE:
@@ -1080,7 +1178,7 @@ getAttributeValuePrivateKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_
                 /* Key identifier for key */
                 if (pTemplate[i].pValue != NULL) {
                     if (pTemplate[i].ulValueLen >= SHA_DIGEST_LENGTH) {
-                        debug(1,"     %s\n",hexify(object->storage.privateKey.keyId, SHA_DIGEST_LENGTH));
+                        debug(DEBUG_VERBOSE,"     %s\n",hexify(object->storage.privateKey.keyId, SHA_DIGEST_LENGTH));
                         memcpy(pTemplate[i].pValue, &object->storage.privateKey.keyId, SHA_DIGEST_LENGTH);
                     } else {
                         rv = CKR_BUFFER_TOO_SMALL;
@@ -1241,7 +1339,7 @@ getAttributeValuePrivateKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_
                 if(pTemplate[i].pValue != NULL) {
                     if(pTemplate[i].ulValueLen >= sizeof(CK_ULONG)) {
                         memcpy(pTemplate[i].pValue, &len, sizeof(CK_ULONG));
-                            
+                        
                     } else {
                         rv = CKR_BUFFER_TOO_SMALL;
                     }
@@ -1267,7 +1365,8 @@ getAttributeValuePrivateKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_
             }         
                 break;
             default:
-                debug(1,"Unknown CKO_PUBLIC_KEY attribute requested: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
+                pTemplate[i].ulValueLen = -1;
+                debug(DEBUG_IMPORTANT,"Unknown CKO_PUBLIC_KEY attribute requested: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
                 rv = CKR_ATTRIBUTE_TYPE_INVALID;
                 
         }
@@ -1282,7 +1381,7 @@ findObjectsInitCertificate(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK
     CK_ULONG i = 0;
     int n = 0;
     
-    debug(1,"CKO_CERTIFICATE (0x%X)\n", CKO_CERTIFICATE);
+    debug(DEBUG_VERBOSE,"CKO_CERTIFICATE (0x%X)\n", CKO_CERTIFICATE);
     
     if(session->objectList == NULL) {
         session->searchList = NULL;
@@ -1312,7 +1411,7 @@ findObjectsInitCertificate(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK
                 break;
                 
             case CKA_TOKEN:
-                debug(1,"  CKA_TOKEN\n");
+                debug(DEBUG_VERBOSE,"  CKA_TOKEN\n");
                 
                 if (pTemplate[i].pValue != NULL) {
                     CK_BBOOL token = CK_TRUE;
@@ -1329,7 +1428,7 @@ findObjectsInitCertificate(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK
                 
                 
             case CKA_PRIVATE:
-                debug(1,"  CKA_PRIVATE\n");
+                debug(DEBUG_VERBOSE,"  CKA_PRIVATE\n");
                 
                 if (pTemplate[i].pValue != NULL) {
                     CK_BBOOL private = CK_TRUE;
@@ -1345,7 +1444,7 @@ findObjectsInitCertificate(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK
                 break;
                 
             case CKA_MODIFIABLE:
-                debug(1,"  CKA_MODIFIABLE\n");
+                debug(DEBUG_VERBOSE,"  CKA_MODIFIABLE\n");
                 if (pTemplate[i].pValue != NULL) {
                     CK_BBOOL mod = CK_FALSE;
                     memcpy(&mod, pTemplate[i].pValue, pTemplate[i].ulValueLen);
@@ -1360,7 +1459,7 @@ findObjectsInitCertificate(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK
                 break;
                 
             case CKA_LABEL:
-                debug(1,"  CKA_LABEL\n");
+                debug(DEBUG_VERBOSE,"  CKA_LABEL\n");
                 if (pTemplate[i].pValue != NULL) {
                     objectEntry *cur = session->objectList;
                     while(cur != NULL) {
@@ -1384,7 +1483,7 @@ findObjectsInitCertificate(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK
                 
                 
             case CKA_CERTIFICATE_TYPE:
-                debug(1,"  CKA_CERTIFICATE_TYPE\n");
+                debug(DEBUG_VERBOSE,"  CKA_CERTIFICATE_TYPE\n");
                 if (pTemplate[i].pValue != NULL) {
                     CK_CERTIFICATE_TYPE certType = CKC_X_509;
                     memcpy(&certType, pTemplate[i].pValue, sizeof(CK_CERTIFICATE_TYPE));
@@ -1399,7 +1498,7 @@ findObjectsInitCertificate(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK
                 break;
                 
             case CKA_TRUSTED:
-                debug(1,"  CKA_TRUSTED\n");
+                debug(DEBUG_VERBOSE,"  CKA_TRUSTED\n");
                 if (pTemplate[i].pValue != NULL) {
                     CK_BBOOL trusted = CK_FALSE;
                     objectEntry *cur = session->objectList;
@@ -1431,7 +1530,7 @@ findObjectsInitCertificate(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK
                 break;
                 
             case CKA_CERTIFICATE_CATEGORY:
-                debug(1,"  CKA_CERTIFICATE_CATEGORY\n");
+                debug(DEBUG_VERBOSE,"  CKA_CERTIFICATE_CATEGORY\n");
                 /* 0 = unspecified (default)
                  * 1 = token user (priv-key availible)
                  * 2 = CA cert
@@ -1459,7 +1558,7 @@ findObjectsInitCertificate(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK
                 break;
                 
             case CKA_CHECK_VALUE:
-                debug(1,"  CKA_CHECK_VALUE\n");
+                debug(DEBUG_VERBOSE,"  CKA_CHECK_VALUE\n");
                 /* The value of this attribute is derived from the certificate by 
                  * taking the first three bytes of the SHA-1 hash of the certificate
                  * object’s CKA_VALUE attribute. 
@@ -1485,17 +1584,17 @@ findObjectsInitCertificate(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK
                 break;
                 
             case CKA_START_DATE:
-                debug(1,"  CKA_START_DATE\n");
+                debug(DEBUG_VERBOSE,"  CKA_START_DATE\n");
                 //TODO (not often used)
                 break;
                 
             case CKA_END_DATE:
-                debug(1,"  CKA_END_DATE\n");
+                debug(DEBUG_VERBOSE,"  CKA_END_DATE\n");
                 //TODO (not often used)
                 break;
                 
             case CKA_SUBJECT:
-                debug(1,"  CKA_SUBJECT\n");
+                debug(DEBUG_VERBOSE,"  CKA_SUBJECT\n");
                 /* DER-encoded certificate subject name */
                 if(pTemplate[i].pValue != NULL) {
                     objectEntry *cur = session->objectList;
@@ -1523,7 +1622,7 @@ findObjectsInitCertificate(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK
                 break;
                 
             case CKA_ID:
-                debug(1,"  CKA_ID\n");
+                debug(DEBUG_VERBOSE,"  CKA_ID\n");
                 /* Key identifier for pub/pri keypair */
                 if (pTemplate[i].pValue != NULL) {
                     if(pTemplate[i].ulValueLen < SHA_DIGEST_LENGTH) {
@@ -1549,26 +1648,36 @@ findObjectsInitCertificate(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK
                 break;
                 
             case CKA_ISSUER:
-                debug(1,"  CKA_ISSUER\n");
+                debug(DEBUG_VERBOSE,"  CKA_ISSUER\n");
                 /* DER-encoded certificate issuer name */
                 if(pTemplate[i].pValue != NULL) {
                     objectEntry *cur = session->objectList;
                     while(cur != NULL) {
+                        debug(DEBUG_VERBOSE,"    Checking on object %d\n",cur->id);
                         n = i2d_X509_NAME(cur->storage.certificate.x509->cert_info->issuer, NULL);
                         if (pTemplate[i].ulValueLen < n) {
                             //too small to match
+                            debug(DEBUG_VERBOSE,"    this cert's issuer size is %d and Templates size is %d. No match.\n",n,pTemplate[i].ulValueLen);
                             objectEntry *rem = cur;
-                            cur = cur->nextObject;
                             removeObjectFromSearchResults(session, rem);                            
                         } else {
-                            unsigned char *in;
+                            unsigned char *in,*inorig;
+                            debug(DEBUG_VERBOSE, "    About to fetch issuers\n");
+                            n = i2d_X509_NAME(cur->storage.certificate.x509->cert_info->issuer, NULL);
+                            in = malloc(n);
+                            inorig = in;
                             n = i2d_X509_NAME(cur->storage.certificate.x509->cert_info->issuer, &in);
+                            in = inorig;
+                            debug(DEBUG_VERBOSE, "    About to compare issuers\n");
                             if(memcmp(in, pTemplate[i].pValue, n) != 0) {
-                                objectEntry *rem = cur;
-                                cur = cur->nextObject;
+                                debug(DEBUG_VERBOSE,"    this cert's issuer did not match the Templates issuer.\n");
+                                objectEntry *rem = cur; 
                                 removeObjectFromSearchResults(session, rem); 
                             }
+                            free(in);
                         }
+                        cur = cur->nextObject;
+                        debug(DEBUG_VERBOSE,"    Foo!\n");
                     }
                 } else {
                     return CKR_ARGUMENTS_BAD;
@@ -1576,7 +1685,7 @@ findObjectsInitCertificate(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK
                 break;
                 
             case CKA_SERIAL_NUMBER:
-                debug(1,"  CKA_SERIAL_NUMBER\n");
+                debug(DEBUG_VERBOSE,"  CKA_SERIAL_NUMBER\n");
                 /* DER-encoded certificate serial number */
                 if(pTemplate[i].pValue != NULL) {
                     objectEntry *cur = session->objectList;
@@ -1603,29 +1712,29 @@ findObjectsInitCertificate(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK
                 break;
                 
             case CKA_VALUE:
-                debug(1,"  CKA_VALUE\n");
+                debug(DEBUG_VERBOSE,"  CKA_VALUE\n");
                 //TODO Who searches for the exact value anyway?
                 break;
                 
                 
             case CKA_URL:
-                debug(1,"  CKA_URL\n");
+                debug(DEBUG_VERBOSE,"  CKA_URL\n");
                 //TODO
                 break;
                 
             case CKA_HASH_OF_SUBJECT_PUBLIC_KEY:
-                debug(1,"  CKA_HASH_OF_SUBJECT_PUBLIC_KEY\n");
+                debug(DEBUG_VERBOSE,"  CKA_HASH_OF_SUBJECT_PUBLIC_KEY\n");
                 //TODO
                 break;
                 
             case CKA_HASH_OF_ISSUER_PUBLIC_KEY:
-                debug(1,"  CKA_HASH_OF_ISSUER_PUBLIC_KEY\n");
+                debug(DEBUG_VERBOSE,"  CKA_HASH_OF_ISSUER_PUBLIC_KEY\n");
                 /* SHA-1 hash of the issuer public key */
                 //TODO
                 break;
                 
             case CKA_JAVA_MIDP_SECURITY_DOMAIN:
-                debug(1,"  CKA_JAVA_MIDP_SECURITY_DOMAIN\n");
+                debug(DEBUG_VERBOSE,"  CKA_JAVA_MIDP_SECURITY_DOMAIN\n");
                 /* Java MIDP security domain:
                  * 0 = unspecified
                  * 1 = manufacturer
@@ -1636,7 +1745,7 @@ findObjectsInitCertificate(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK
                 break;
                 
             default:
-                debug(1,"Unknown CKO_CERTIFICATE attribute requested: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
+                debug(DEBUG_IMPORTANT,"Unknown CKO_CERTIFICATE attribute requested: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
                 return CKR_ATTRIBUTE_TYPE_INVALID;
         }
     }
@@ -1652,7 +1761,7 @@ findObjectsInitPublicKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_U
     int n = 0;
     
     
-    debug(1,"CKO_PUBLIC_KEY (0x%X)\n", CKO_PUBLIC_KEY);
+    debug(DEBUG_VERBOSE,"CKO_PUBLIC_KEY (0x%X)\n", CKO_PUBLIC_KEY);
     
     if(session->objectList == NULL) {
         session->searchList = NULL;
@@ -1681,7 +1790,7 @@ findObjectsInitPublicKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_U
                 //already handled
                 break;
             case CKA_TOKEN:
-                debug(1,"  CKA_TOKEN\n");
+                debug(DEBUG_VERBOSE,"  CKA_TOKEN\n");
                 
                 if (pTemplate[i].pValue != NULL) {
                     CK_BBOOL token = CK_TRUE;
@@ -1697,7 +1806,7 @@ findObjectsInitPublicKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_U
                 
                 
             case CKA_PRIVATE:
-                debug(1,"  CKA_PRIVATE\n");
+                debug(DEBUG_VERBOSE,"  CKA_PRIVATE\n");
                 
                 if (pTemplate[i].pValue != NULL) {
                     CK_BBOOL private = CK_TRUE;
@@ -1712,7 +1821,7 @@ findObjectsInitPublicKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_U
                 break;
                 
             case CKA_MODIFIABLE:
-                debug(1,"  CKA_MODIFIABLE\n");
+                debug(DEBUG_VERBOSE,"  CKA_MODIFIABLE\n");
                 if (pTemplate[i].pValue != NULL) {
                     CK_BBOOL mod = CK_FALSE;
                     memcpy(&mod, pTemplate[i].pValue, pTemplate[i].ulValueLen);
@@ -1726,7 +1835,7 @@ findObjectsInitPublicKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_U
                 break;
                 
             case CKA_LABEL:
-                debug(1,"  CKA_LABEL\n");
+                debug(DEBUG_VERBOSE,"  CKA_LABEL\n");
                 if (pTemplate[i].pValue != NULL) {
                     objectEntry *cur = session->objectList;
                     while(cur != NULL) {
@@ -1749,12 +1858,12 @@ findObjectsInitPublicKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_U
                 break;
                 
             case CKA_KEY_TYPE:
-                debug(1,"  CKA_KEY_TYPE\n");
+                debug(DEBUG_VERBOSE,"  CKA_KEY_TYPE\n");
                 //TODO
                 break;
                 
             case CKA_ID:
-                debug(1,"  CKA_ID\n");
+                debug(DEBUG_VERBOSE,"  CKA_ID\n");
                 /* Key identifier for pub/pri keypair */
                 if (pTemplate[i].pValue != NULL) {
                     if(pTemplate[i].ulValueLen < SHA_DIGEST_LENGTH) {
@@ -1780,38 +1889,38 @@ findObjectsInitPublicKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_U
                 break;
                 
             case CKA_START_DATE:
-                debug(1,"  CKA_START_DATE\n");
+                debug(DEBUG_VERBOSE,"  CKA_START_DATE\n");
                 //TODO
                 break;
                 
             case CKA_END_DATE:
-                debug(1,"  CKA_END_DATE\n");
+                debug(DEBUG_VERBOSE,"  CKA_END_DATE\n");
                 //TODO
                 break;
                 
             case CKA_DERIVE:
-                debug(1,"  CKA_DERIVE\n");
+                debug(DEBUG_VERBOSE,"  CKA_DERIVE\n");
                 //TODO
                 break;
                 
             case CKA_LOCAL:
-                debug(1,"  CKA_LOCAL\n");
+                debug(DEBUG_VERBOSE,"  CKA_LOCAL\n");
                 //TODO
                 break;
                 
             case CKA_KEY_GEN_MECHANISM:
-                debug(1,"  CKA_KEY_GEN_MECHANISM\n");
+                debug(DEBUG_VERBOSE,"  CKA_KEY_GEN_MECHANISM\n");
                 //TODO
                 break;
                 
             case CKA_ALLOWED_MECHANISMS:
-                debug(1,"  CKA_ALLOWED_MECHANISMS\n");
+                debug(DEBUG_VERBOSE,"  CKA_ALLOWED_MECHANISMS\n");
                 //TODO
                 break;
                 
             case CKA_SUBJECT:
                 /* DER-encoded certificate subject name */
-                debug(1,"  CKA_SUBJECT\n");
+                debug(DEBUG_VERBOSE,"  CKA_SUBJECT\n");
                 if(pTemplate[i].pValue != NULL) {
                     objectEntry *cur = session->objectList;
                     while(cur != NULL) {
@@ -1838,37 +1947,37 @@ findObjectsInitPublicKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_U
                 break;
                 
             case CKA_ENCRYPT:
-                debug(1,"  CKA_ENCRYPT\n");
+                debug(DEBUG_VERBOSE,"  CKA_ENCRYPT\n");
                 //TODO
                 break;
                 
             case CKA_VERIFY:
-                debug(1,"  CKA_VERIFY\n");
+                debug(DEBUG_VERBOSE,"  CKA_VERIFY\n");
                 //TODO
                 break;
                 
             case CKA_VERIFY_RECOVER:
-                debug(1,"  CKA_VERIFY_RECOVER\n");
+                debug(DEBUG_VERBOSE,"  CKA_VERIFY_RECOVER\n");
                 //TODO
                 break;
                 
             case CKA_WRAP:
-                debug(1,"  CKA_WRAP\n");
+                debug(DEBUG_VERBOSE,"  CKA_WRAP\n");
                 //TODO
                 break;
                 
             case CKA_TRUSTED:
-                debug(1,"  CKA_TRUSTED\n");
+                debug(DEBUG_VERBOSE,"  CKA_TRUSTED\n");
                 //TODO
                 break;
                 
             case CKA_WRAP_TEMPLATE:
-                debug(1,"  CKA_WRAP_TEMPLATE\n");
+                debug(DEBUG_VERBOSE,"  CKA_WRAP_TEMPLATE\n");
                 //TODO
                 break;
                 
             default:
-                debug(1,"Unknown CKO_PRIVATE_KEY attribute requested: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
+                debug(DEBUG_IMPORTANT,"Unknown CKO_PRIVATE_KEY attribute requested: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
                 return CKR_ATTRIBUTE_TYPE_INVALID;
         }
     }
@@ -1884,7 +1993,7 @@ findObjectsInitPrivateKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_
     int n = 0;
     
     
-    debug(1,"CKO_PRIVATE_KEY (0x%X)\n", CKO_PRIVATE_KEY);
+    debug(DEBUG_VERBOSE,"CKO_PRIVATE_KEY (0x%X)\n", CKO_PRIVATE_KEY);
     
     if(session->objectList == NULL) {
         session->searchList = NULL;
@@ -1914,7 +2023,7 @@ findObjectsInitPrivateKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_
                 //already handled
                 break;
             case CKA_TOKEN:
-                debug(1,"  CKA_TOKEN\n");
+                debug(DEBUG_VERBOSE,"  CKA_TOKEN\n");
                 
                 if (pTemplate[i].pValue != NULL) {
                     CK_BBOOL token = CK_TRUE;
@@ -1930,7 +2039,7 @@ findObjectsInitPrivateKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_
                 
                 
             case CKA_PRIVATE:
-                debug(1,"  CKA_PRIVATE\n");
+                debug(DEBUG_VERBOSE,"  CKA_PRIVATE\n");
                 
                 if (pTemplate[i].pValue != NULL) {
                     CK_BBOOL private = CK_TRUE;
@@ -1945,7 +2054,7 @@ findObjectsInitPrivateKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_
                 break;
                 
             case CKA_MODIFIABLE:
-                debug(1,"  CKA_MODIFIABLE\n");
+                debug(DEBUG_VERBOSE,"  CKA_MODIFIABLE\n");
                 if (pTemplate[i].pValue != NULL) {
                     CK_BBOOL mod = CK_FALSE;
                     memcpy(&mod, pTemplate[i].pValue, pTemplate[i].ulValueLen);
@@ -1959,7 +2068,7 @@ findObjectsInitPrivateKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_
                 break;
                 
             case CKA_LABEL:
-                debug(1,"  CKA_LABEL\n");
+                debug(DEBUG_VERBOSE,"  CKA_LABEL\n");
                 if (pTemplate[i].pValue != NULL) {
                     objectEntry *cur = session->objectList;
                     while(cur != NULL) {
@@ -1982,29 +2091,29 @@ findObjectsInitPrivateKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_
                 break;
                 
             case CKA_KEY_TYPE:
-                debug(1,"  CKA_KEY_TYPE\n");
+                debug(DEBUG_VERBOSE,"  CKA_KEY_TYPE\n");
                 //TODO: do something useful with this
                 switch(  *((CK_KEY_TYPE *) pTemplate[i].pValue) ) {
                     case CKK_RSA:
-                        debug(1,"     CKK_RSA\n");
+                        debug(DEBUG_VERBOSE,"     CKK_RSA\n");
                         break;
                     case CKK_DSA:
-                        debug(1,"     CKK_DSA\n");
+                        debug(DEBUG_VERBOSE,"     CKK_DSA\n");
                         break;
                     case CKK_DH:
-                        debug(1,"     CKK_DH\n");
+                        debug(DEBUG_VERBOSE,"     CKK_DH\n");
                         break;
                     default:
-                        debug(1,"     0x%X\n",*((CK_KEY_TYPE *) pTemplate[i].pValue));
+                        debug(DEBUG_VERBOSE,"     0x%X\n",*((CK_KEY_TYPE *) pTemplate[i].pValue));
                         break;
                 }
                 break;
                 
             case CKA_ID:
-                debug(1,"  CKA_ID\n");
+                debug(DEBUG_VERBOSE,"  CKA_ID\n");
                 /* Key identifier for pub/pri keypair */
                 if (pTemplate[i].pValue != NULL) {
-                    debug(1,"     %s\n",hexify(pTemplate[i].pValue, pTemplate[i].ulValueLen));
+                    debug(DEBUG_VERBOSE,"     %s\n",hexify(pTemplate[i].pValue, pTemplate[i].ulValueLen));
                     if(pTemplate[i].ulValueLen < SHA_DIGEST_LENGTH) {
                         //not long enough to match anything of ours
                         freeObjectSearchList(session);
@@ -2028,38 +2137,38 @@ findObjectsInitPrivateKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_
                 break;
                 
             case CKA_START_DATE:
-                debug(1,"  CKA_START_DATE\n");
+                debug(DEBUG_VERBOSE,"  CKA_START_DATE\n");
                 //TODO
                 break;
                 
             case CKA_END_DATE:
-                debug(1,"  CKA_END_DATE\n");
+                debug(DEBUG_VERBOSE,"  CKA_END_DATE\n");
                 //TODO
                 break;
                 
             case CKA_DERIVE:
-                debug(1,"  CKA_DERIVE\n");
+                debug(DEBUG_VERBOSE,"  CKA_DERIVE\n");
                 //TODO
                 break;
                 
             case CKA_LOCAL:
-                debug(1,"  CKA_LOCAL\n");
+                debug(DEBUG_VERBOSE,"  CKA_LOCAL\n");
                 //TODO
                 break;
                 
             case CKA_KEY_GEN_MECHANISM:
-                debug(1,"  CKA_KEY_GEN_MECHANISM\n");
+                debug(DEBUG_VERBOSE,"  CKA_KEY_GEN_MECHANISM\n");
                 //TODO
                 break;
                 
             case CKA_ALLOWED_MECHANISMS:
-                debug(1,"  CKA_ALLOWED_MECHANISMS\n");
+                debug(DEBUG_VERBOSE,"  CKA_ALLOWED_MECHANISMS\n");
                 //TODO
                 break;
                 
             case CKA_SUBJECT:
                 /* DER-encoded certificate subject name */
-                debug(1,"  CKA_SUBJECT\n");
+                debug(DEBUG_VERBOSE,"  CKA_SUBJECT\n");
                 if(pTemplate[i].pValue != NULL) {
                     objectEntry *cur = session->objectList;
                     while(cur != NULL) {
@@ -2086,62 +2195,62 @@ findObjectsInitPrivateKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_
                 break;
                 
             case CKA_SENSITIVE:
-                debug(1,"  CKA_SENSITIVE\n");
+                debug(DEBUG_VERBOSE,"  CKA_SENSITIVE\n");
                 //TODO
                 break;
                 
             case CKA_DECRYPT:
-                debug(1,"  CKA_DECRYPT\n");
+                debug(DEBUG_VERBOSE,"  CKA_DECRYPT\n");
                 //TODO
                 break;
                 
             case CKA_SIGN:
-                debug(1,"  CKA_SIGN\n");
+                debug(DEBUG_VERBOSE,"  CKA_SIGN\n");
                 //TODO
                 break;
                 
             case CKA_SIGN_RECOVER:
-                debug(1,"  CKA_SIGN_RECOVER\n");
+                debug(DEBUG_VERBOSE,"  CKA_SIGN_RECOVER\n");
                 //TODO
                 break;
                 
             case CKA_UNWRAP:
-                debug(1,"  CKA_UNWRAP\n");
+                debug(DEBUG_VERBOSE,"  CKA_UNWRAP\n");
                 //TODO
                 break;
                 
             case CKA_EXTRACTABLE:
-                debug(1,"  CKA_EXTRACTABLE\n");
+                debug(DEBUG_VERBOSE,"  CKA_EXTRACTABLE\n");
                 //TODO
                 break;
                 
             case CKA_ALWAYS_SENSITIVE:
-                debug(1,"  CKA_ALWAYS_SENSITIVE\n");
+                debug(DEBUG_VERBOSE,"  CKA_ALWAYS_SENSITIVE\n");
                 //TODO
                 break;
                 
             case CKA_NEVER_EXTRACTABLE:
-                debug(1,"  CKA_NEVER_EXTRACTABLE\n");
+                debug(DEBUG_VERBOSE,"  CKA_NEVER_EXTRACTABLE\n");
                 //TODO
                 break;
                 
             case CKA_WRAP_WITH_TRUSTED:
-                debug(1,"  CKA_WRAP_WITH_TRUSTED\n");
+                debug(DEBUG_VERBOSE,"  CKA_WRAP_WITH_TRUSTED\n");
                 //TODO
                 break;
                 
             case CKA_UNWRAP_TEMPLATE:
-                debug(1,"  CKA_UNWRAP_TEMPLATE\n");
+                debug(DEBUG_VERBOSE,"  CKA_UNWRAP_TEMPLATE\n");
                 //TODO
                 break;
                 
             case CKA_ALWAYS_AUTHENTICATE:
-                debug(1,"  CKA_ALWAYS_AUTHENTICATE\n");
+                debug(DEBUG_VERBOSE,"  CKA_ALWAYS_AUTHENTICATE\n");
                 //TODO
                 break;
                 
             default:
-                debug(1,"Unknown CKO_PRIVATE_KEY attribute requested: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
+                debug(DEBUG_IMPORTANT,"Unknown CKO_PRIVATE_KEY attribute requested: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
                 return CKR_ATTRIBUTE_TYPE_INVALID;
         }
     }
@@ -2186,5 +2295,105 @@ setDateFromASN1Time(const ASN1_TIME *aTime, char *out)
         memcpy(&(out[2]), aTime->data, 6);
     } else {
         memcpy(out,aTime->data, 8);
+    }
+}
+
+CSSM_ALGORITHMS
+pMechanismToCSSM_ALGID(CK_MECHANISM_PTR pMechanism){
+    switch(pMechanism->mechanism) {
+		case CKM_RSA_PKCS:
+			return CSSM_ALGID_RSA; 
+		case CKM_MD2_RSA_PKCS:
+			return CSSM_ALGID_MD2WithRSA;
+		case CKM_MD5_RSA_PKCS:
+			return CSSM_ALGID_MD5WithRSA; 
+		case CKM_SHA1_RSA_PKCS:
+			return CSSM_ALGID_SHA1WithRSA; 
+		case CKM_DSA:
+			return CSSM_ALGID_DSA; 
+		case CKM_DSA_SHA1:
+			return CSSM_ALGID_SHA1WithDSA; 
+		case CKM_ECDSA:
+			return CSSM_ALGID_ECDSA; 
+		case CKM_ECDSA_SHA1:
+			return CSSM_ALGID_SHA1WithECDSA; 
+		case CKM_RC2_MAC:
+			return CSSM_ALGID_RC2; 
+		case CKM_RC5_MAC:
+			return CSSM_ALGID_RC5; 
+		case CKM_DES_MAC:
+			return CSSM_ALGID_DES; 
+		case CKM_DES3_MAC:
+			return CSSM_ALGID_3DES; 
+		case CKM_CAST_MAC:
+			return CSSM_ALGID_CAST; 
+		case CKM_CAST3_MAC:
+			return CSSM_ALGID_CAST3; 
+		case CKM_CAST5_MAC:
+			return CSSM_ALGID_CAST5; 
+		case CKM_IDEA_MAC:
+			return CSSM_ALGID_IDEA; 
+		case CKM_CDMF_MAC:
+			return CSSM_ALGID_CDMF; 
+		case CKM_MD2_HMAC:
+			return CSSM_ALGID_MD2; 
+		case CKM_MD5_HMAC:
+			return CSSM_ALGID_MD5; 
+		case CKM_SHA_1_HMAC:
+			return CSSM_ALGID_SHA1; 
+		case CKM_RIPEMD128_HMAC:
+			return CSSM_ALGID_RIPEMAC; 
+		case CKM_SSL3_MD5_MAC:
+			return CSSM_ALGID_SSL3MD5_MAC;
+		case CKM_SSL3_SHA1_MAC:
+			return CSSM_ALGID_SSL3SHA1_MAC; 
+            
+			
+			
+            /* Supported by PKCS, but no equiv in CSSM */
+		case CKM_RC2_MAC_GENERAL:
+		case CKM_RC5_MAC_GENERAL:
+		case CKM_AES_MAC_GENERAL:
+		case CKM_AES_MAC:
+		case CKM_DES_MAC_GENERAL:			
+		case CKM_DES3_MAC_GENERAL:
+		case CKM_CAST_MAC_GENERAL:	
+		case CKM_CAST5_MAC_GENERAL:
+		case CKM_IDEA_MAC_GENERAL:	
+		case CKM_CDMF_MAC_GENERAL:
+		case CKM_MD2_HMAC_GENERAL:
+		case CKM_MD5_HMAC_GENERAL:
+		case CKM_SHA_1_HMAC_GENERAL:
+		case CKM_SHA256_HMAC_GENERAL:
+		case CKM_SHA256_HMAC:
+		case CKM_SHA384_HMAC_GENERAL:
+		case CKM_SHA384_HMAC:
+		case CKM_SHA512_HMAC_GENERAL:
+		case CKM_SHA512_HMAC:
+		case CKM_RIPEMD128_HMAC_GENERAL:
+		case CKM_RIPEMD160_HMAC_GENERAL:
+		case CKM_RIPEMD160_HMAC:
+		case CKM_RSA_PKCS_PSS:			
+		case CKM_RSA_9796:
+		case CKM_RSA_X_509:
+		case CKM_RSA_X9_31:					
+		case CKM_SHA256_RSA_PKCS:
+		case CKM_SHA384_RSA_PKCS:
+		case CKM_SHA512_RSA_PKCS:
+		case CKM_RIPEMD128_RSA_PKCS:
+		case CKM_RIPEMD160_RSA_PKCS:
+		case CKM_SHA1_RSA_PKCS_PSS:
+		case CKM_SHA256_RSA_PKCS_PSS:
+		case CKM_SHA384_RSA_PKCS_PSS:
+		case CKM_SHA512_RSA_PKCS_PSS:
+		case CKM_SHA1_RSA_X9_31:
+		case CKM_FORTEZZA_TIMESTAMP:
+		case CKM_CMS_SIG:
+			
+			return CKR_MECHANISM_PARAM_INVALID;
+			
+		default:
+            debug(DEBUG_IMPORTANT,"Mechanism that we dont know how to handle (yet?) 0x%X (%s)\n",pMechanism->mechanism, getCKMName(pMechanism->mechanism));
+			return CKR_MECHANISM_INVALID;
     }
 }

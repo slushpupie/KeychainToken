@@ -596,6 +596,57 @@ const char * getCKCName(CK_CERTIFICATE_TYPE ctype) {
 }
 
 
+const char * getSecErrorName(OSStatus status) {
+
+    switch (status) {
+        case errSecNotAvailable: return "errSecNotAvailable";
+        case errSecReadOnly: return "errSecReadOnly";
+        case errSecAuthFailed: return "errSecAuthFailed";
+        case errSecNoSuchKeychain: return "errSecNoSuchKeychain";
+        case errSecInvalidKeychain: return "errSecInvalidKeychain";
+        case errSecDuplicateKeychain: return "errSecDuplicateKeychain";
+        case errSecDuplicateCallback: return "errSecDuplicateCallback";
+        case errSecInvalidCallback: return "errSecInvalidCallback";
+        case errSecDuplicateItem: return "errSecDuplicateItem";
+        case errSecItemNotFound: return "errSecItemNotFound";
+        case errSecBufferTooSmall: return "errSecBufferTooSmall";
+        case errSecDataTooLarge: return "errSecDataTooLarge";
+        case errSecNoSuchAttr: return "errSecNoSuchAttr";
+        case errSecInvalidItemRef: return "errSecInvalidItemRef";
+        case errSecInvalidSearchRef: return "errSecInvalidSearchRef";
+        case errSecNoSuchClass: return "errSecNoSuchClass";
+        case errSecNoDefaultKeychain: return "errSecNoDefaultKeychain";
+        case errSecInteractionNotAllowed: return "errSecInteractionNotAllowed";
+        case errSecReadOnlyAttr: return "errSecReadOnlyAttr";
+        case errSecWrongSecVersion: return "errSecWrongSecVersion";
+        case errSecKeySizeNotAllowed: return "errSecKeySizeNotAllowed";
+        case errSecNoStorageModule: return "errSecNoStorageModule";
+        case errSecNoCertificateModule: return "errSecNoCertificateModule";
+        case errSecNoPolicyModule: return "errSecNoPolicyModule";
+        case errSecInteractionRequired: return "errSecInteractionRequired";
+        case errSecDataNotAvailable: return "errSecDataNotAvailable";
+        case errSecDataNotModifiable: return "errSecDataNotModifiable";
+        case errSecCreateChainFailed: return "errSecCreateChainFailed";
+        case errSecInvalidPrefsDomain: return "errSecInvalidPrefsDomain";
+        case errSecACLNotSimple: return "errSecACLNotSimple";
+        case errSecPolicyNotFound: return "errSecPolicyNotFound";
+        case errSecInvalidTrustSetting: return "errSecInvalidTrustSetting";
+        case errSecNoAccessForItem: return "errSecNoAccessForItem";
+        case errSecInvalidOwnerEdit: return "errSecInvalidOwnerEdit";
+        case errSecTrustNotAvailable: return "errSecTrustNotAvailable";
+        case errSecUnsupportedFormat: return "errSecUnsupportedFormat";
+        case errSecUnknownFormat: return "errSecUnknownFormat";
+        case errSecKeyIsSensitive: return "errSecKeyIsSensitive";
+        case errSecMultiplePrivKeys: return "errSecMultiplePrivKeys";
+        case errSecPassphraseRequired: return "errSecPassphraseRequired";
+        case errSecInvalidPasswordRef: return "errSecInvalidPasswordRef";
+        case errSecInvalidTrustSettings: return "errSecInvalidTrustSettings ";
+        case errSecNoTrustSettings: return "errSecNoTrustSettings";
+        case errSecPkcs12VerifyFailure: return "errSecPkcs12VerifyFailure ";
+        default: return "";
+    }
+}
+
 void
 debug(int level, const char *format, ...) {
 #ifdef DEBUG 

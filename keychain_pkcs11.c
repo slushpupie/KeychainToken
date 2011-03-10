@@ -1296,7 +1296,6 @@ signInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HAND
     
     
     status = SecKeychainGetCSPHandle(keychainRef, &cspHandle);
-    //status = SecKeyGetCSPHandle(keychainRef, &cspHandle);
     if (status != 0) {
         debug(DEBUG_WARNING,"Error in SecKeychainGetCSPHandle\n");
         returnVal = CKR_GENERAL_ERROR;
@@ -1304,7 +1303,9 @@ signInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HAND
     }
     
     
-    status = SecKeyGetCredentials(object->storage.privateKey.keyRef, CSSM_ACL_AUTHORIZATION_SIGN, kSecCredentialTypeNoUI, &cssmCreds);
+    //status = SecKeyGetCredentials(object->storage.privateKey.keyRef, CSSM_ACL_AUTHORIZATION_SIGN, kSecCredentialTypeNoUI, &cssmCreds);
+    ///status = SecKeyGetCredentials(object->storage.privateKey.keyRef, CSSM_ACL_AUTHORIZATION_SIGN, kSecCredentialTypeDefault, &cssmCreds);
+    status = SecKeyGetCredentials(object->storage.privateKey.keyRef, CSSM_ACL_AUTHORIZATION_SIGN, kSecCredentialTypeWithUI, &cssmCreds);
     if (status != 0) {
         debug(DEBUG_WARNING,"Error in SecKeyGetCredentials (status = %d)\n", status);
         returnVal = CKR_GENERAL_ERROR;

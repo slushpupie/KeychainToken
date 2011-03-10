@@ -317,6 +317,8 @@ makeObjectFromCertificateRef(SecCertificateRef certRef, SecKeychainRef keychain,
     SecKeychainAttributeList *attrList = NULL;
     SecKeychainAttributeInfo *info = NULL;
     UInt32 length = 0;
+    CSSM_DATA certData;
+    unsigned char *pData = NULL;
 	void *data = NULL;
     int ix;
     
@@ -335,13 +337,19 @@ makeObjectFromCertificateRef(SecCertificateRef certRef, SecKeychainRef keychain,
     memset(object, 0, sizeof(objectEntry));
     object->class = class;
     
-    
+    /* First find out the item class. */
+	status = SecKeychainItemCopyAttributesAndData(certRef, NULL, &itemClass, NULL, NULL, NULL);
+	if (status) {
+		debug(DEBUG_VERBOSE, "SecKeychainItemCopyAttributesAndData (%s)\n", getSecErrorName(status));
+        freeObject(object);
+        return NULL;
+	}
     
     /* Now get the AttributeInfo for it. */
     status = SecKeychainAttributeInfoForItemID(keychain, itemClass, &info);
     if (status) {
         //TODO more specific errors
-        debug(DEBUG_VERBOSE,"unable to get AttributeInfo for keychain item\n");
+        debug(DEBUG_VERBOSE,"unable to get AttributeInfo for keychain item (%s)\n", getSecErrorName(status));
         free(object);
         return NULL;
     }
@@ -351,7 +359,7 @@ makeObjectFromCertificateRef(SecCertificateRef certRef, SecKeychainRef keychain,
                                                   &data);
     if (status) {
         //TODO more specific errors
-        debug(DEBUG_VERBOSE, "unable to copy attributes for keychain item\n");
+        debug(DEBUG_VERBOSE, "unable to copy attributes for keychain item (%s)\n", getSecErrorName(status));
         free(object);
         return NULL;
         
@@ -386,7 +394,8 @@ makeObjectFromCertificateRef(SecCertificateRef certRef, SecKeychainRef keychain,
           
         } 
         if(tag == kSecLabelItemAttr) {
-            object->label.Length = malloc(attribute->length);
+            object->label.Data = malloc(attribute->length);
+            object->label.Length = attribute->length;
             memcpy(object->label.Data, attribute->data, attribute->length);
         }
     }
@@ -394,9 +403,14 @@ makeObjectFromCertificateRef(SecCertificateRef certRef, SecKeychainRef keychain,
     
     //TODO free attributeList and data
 
+    status = SecCertificateGetData(certRef, &certData);
+    if (status != 0) {
+        debug(DEBUG_VERBOSE, "Unable to get certificate (%s)\n", getSecErrorName(status));
+        return NULL;
+    }
+    pData = certData.Data;
     
-    
-    X509 *cert = d2i_X509(NULL, data, length);
+    X509 *cert = d2i_X509(NULL, &pData, certData.Length);
     
     
     switch(class) {
@@ -441,7 +455,7 @@ makeObjectFromKeyRef(SecKeyRef keyRef, SecKeychainRef keychain, CK_OBJECT_CLASS 
     UInt32 length = 0;
 	void *data = NULL;
     int ix;
-    CFDataRef outData = NULL;
+    
     
     
     object = malloc(sizeof(objectEntry));
@@ -455,7 +469,7 @@ makeObjectFromKeyRef(SecKeyRef keyRef, SecKeychainRef keychain, CK_OBJECT_CLASS 
     /* First find out the item class. */
 	status = SecKeychainItemCopyAttributesAndData(keyRef, NULL, &itemClass, NULL, NULL, NULL);
 	if (status) {
-		debug(DEBUG_VERBOSE, "SecKeychainItemCopyAttributesAndData (%d)\n", status);
+		debug(DEBUG_VERBOSE, "SecKeychainItemCopyAttributesAndData (%s)\n", getSecErrorName(status));
         freeObject(object);
         return NULL;
 	}
@@ -475,7 +489,7 @@ makeObjectFromKeyRef(SecKeyRef keyRef, SecKeychainRef keychain, CK_OBJECT_CLASS 
                                                   &data);
     if (status) {
         //TODO more specific errors
-        debug(DEBUG_VERBOSE, "unable to copy attributes for keychain item (%d\n", status);
+        debug(DEBUG_VERBOSE, "unable to copy attributes for keychain item (%s)\n", getSecErrorName(status));
         freeObject(object);
         return NULL;
         
@@ -515,7 +529,7 @@ makeObjectFromKeyRef(SecKeyRef keyRef, SecKeychainRef keychain, CK_OBJECT_CLASS 
             memcpy(object->label.Data, attribute->data, attribute->length);
         }
     }
-    debug(DEBUG_VERBOSE,"new object ID is %s", hexify(object->storage.publicKey.keyId, KEYID_SIZE));
+    debug(DEBUG_VERBOSE,"new object CKA_ID is %s\n", hexify(object->storage.publicKey.keyId, KEYID_SIZE));
     //TODO What if object->storage.publicKey.keyId == null now???
     
     //TODO free attribList and data
@@ -526,19 +540,27 @@ makeObjectFromKeyRef(SecKeyRef keyRef, SecKeychainRef keychain, CK_OBJECT_CLASS 
         SecKeyImportExportParameters keyParams;
         memset(&keyParams, 0, sizeof(keyParams));
         keyParams.version = SEC_KEY_IMPORT_EXPORT_PARAMS_VERSION;
-        char *data;
+        const UInt8 *data = NULL;
+        CFDataRef outData = NULL;
         
         status = SecKeychainItemExport(keyRef, kSecFormatOpenSSL, 0, &keyParams, &outData);
         if (status) {
-            debug(DEBUG_VERBOSE, "unable to export public key\n");
+            debug(DEBUG_VERBOSE, "unable to export public key (%s)\n", getSecErrorName(status));
             freeObject(object);
+            return NULL;
+        }
+        if(outData == NULL) {
+            debug(DEBUG_VERBOSE, "unable to export public key (%s)\n", getSecErrorName(status));
+            freeObject(object);
+            return NULL;
         }
         data = CFDataGetBytePtr(outData);
-        object->storage.publicKey.pubKey = d2i_PUBKEY(NULL, &data, CFDataGetLength(outData));
+        object->storage.publicKey.pubKey = d2i_PUBKEY(NULL, (void *) &data, CFDataGetLength(outData));
         if(object->storage.publicKey.pubKey == NULL) {
             char msg[1024];
             int err = ERR_get_error();
-            debug(DEBUG_VERBOSE, "Error parsing public key: %s\n",err, ERR_error_string(err, msg));
+            debug(DEBUG_VERBOSE, "Error parsing public key: %s\n", err, ERR_error_string(err, msg));
+            return NULL;
         }
         object->storage.publicKey.keyRef = keyRef;
         CFRetain(object->storage.publicKey.keyRef);

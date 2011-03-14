@@ -66,10 +66,6 @@ CK_RV getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTempla
 CK_RV getAttributeValuePublicKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
 CK_RV getAttributeValuePrivateKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
 
-CK_RV findObjectsInitCertificate(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
-CK_RV findObjectsInitPublicKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
-CK_RV findObjectsInitPrivateKey(sessionEntry *session, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
-
 void setString(char *in, char *out, int len);
 char * basename(const char *input);
 void setDateFromASN1Time(const ASN1_TIME *aTime, char *out);

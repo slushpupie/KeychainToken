@@ -647,12 +647,8 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
     SecKeychainItemRef itemRef = NULL;
     SecItemClass itemClass = 0;
     SecKeychainAttributeList *attrList = NULL;
-    SecKeychainAttributeInfo *info = NULL;
-    UInt32 length = 0;
-	void *data = NULL;
     CK_RV rv = CKR_OK;
     int count = 0;
-    int ix = 0;
     
     
     if(ulCount > 0 && pTemplate == NULL) {
@@ -768,80 +764,549 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
     
     
     /* Filter out based on tempalte */
+    
+    objectEntry *cur = session->objectList;
+    while(cur != NULL) {
+        addObjectToSearchResults(session,cur);
+        cur = cur->nextObject;
+    }
+    
     if(ulCount == 0) {
-        objectEntry *cur = session->objectList;
-        
+                
         debug(DEBUG_VERBOSE,"Requested all objects\n");
-        while(cur != NULL) {
-            addObjectToSearchResults(session,cur);
-			cur = cur->nextObject;
-        }
         session->cursor = session->searchList;
         
         if(mutex.use) {
             mutex.UnlockMutex(session->myMutex);
         }
         return CKR_OK;
-    }         
+    } 
     
     
     debug(DEBUG_VERBOSE,"Request template has %u elements\n",ulCount);
     for(i = 0; i < ulCount; i++) {
-        if(pTemplate[i].type == CKA_CLASS) {
-            CK_ULONG class;
-            memcpy(&class, pTemplate[i].pValue, pTemplate[i].ulValueLen);
-            
-            debug(DEBUG_VERBOSE,"Requested CKA_CLASS = ");
-            switch(class) {
-                case CKO_CERTIFICATE:
-                    rv = findObjectsInitCertificate(session, pTemplate, ulCount );
-                    if(mutex.use) {
-                        mutex.UnlockMutex(session->myMutex);
-                    }
-                    return rv;
-                    break;
-                    
-                case CKO_PUBLIC_KEY:
-                    rv = findObjectsInitPublicKey(session, pTemplate, ulCount);
-                    if(mutex.use) {
-                        mutex.UnlockMutex(session->myMutex);
-                    }
-                    return rv;
-                    break;
-                    
-                case CKO_PRIVATE_KEY:
-                    rv = findObjectsInitPrivateKey(session, pTemplate, ulCount);
-                    if(mutex.use) {
-                        mutex.UnlockMutex(session->myMutex);
-                    }
-                    return rv;
-                    break;   
-                    
-				case CKO_DATA:
-                case CKO_SECRET_KEY:
-                case CKO_HW_FEATURE:
-                case CKO_DOMAIN_PARAMETERS:
-                case CKO_MECHANISM:
-                case CKO_OTP_KEY:
-                case CKO_NSS_BUILTIN_ROOT_LIST:
-                case CKO_NSS_CRL:
-                case CKO_NETSCAPE_TRUST:
-                    debug(DEBUG_INFO,"unsupported object of type 0x%X (%s)\n", class, getCKOName(class));
-                    break;
-                default:
-                    debug(DEBUG_INFO,"unknown object of type 0x%X (%s)\n", class, getCKOName(class));
-                    if(mutex.use) {
-                        mutex.UnlockMutex(session->myMutex);
-                    }
-                    return CKR_ATTRIBUTE_TYPE_INVALID;
-            }
-        } else {
-            debug(DEBUG_INFO,"Requested attribute: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
-            
+        debug(DEBUG_VERBOSE,"  %s ",getCKAName(pTemplate[i].type));
+        if(session->searchList == NULL) {
+            debug(DEBUG_VERBOSE,"No object match so far\n");
+            break;
         }
+        switch(pTemplate[i].type) {
+            case CKA_CLASS:
+                //All objects have this 
+                if(pTemplate[i].pValue != NULL) {
+                    CK_ULONG class;
+                    memcpy(&class, pTemplate[i].pValue, pTemplate[i].ulValueLen);
+                    debug(DEBUG_VERBOSE,"(%s)\n", getCKOName(class));
+
+                    objectEntry *cur = session->objectList;
+                    while(cur != NULL) {
+                        if(cur->class != class) {
+                            objectEntry *rem = cur;
+                            cur = cur->nextObject;
+                            removeObjectFromSearchResults(session, rem);
+                        } else {
+                            cur = cur->nextObject;
+                        }
+                    }
+                } else {
+                    debug(DEBUG_VERBOSE,"(incomplete)\n");
+                    return CKR_ARGUMENTS_BAD;
+                }
+                break;
+            case CKA_LABEL:
+                //All storage objects have this
+                if (pTemplate[i].pValue != NULL) {
+                    debug(DEBUG_VERBOSE,"(%s)\n",pTemplate[i].pValue);
+                    
+                    objectEntry *cur = session->objectList;
+                    while(cur != NULL) {
+                        if(cur->label.Length-1 == pTemplate[i].ulValueLen &&
+                           (memcmp(cur->label.Data, pTemplate[i].pValue, pTemplate[i].ulValueLen) == 0)) {
+                            //keep this object
+                            cur = cur->nextObject;
+                        } else {
+                            objectEntry *rem = cur;
+                            cur = cur->nextObject;
+                            removeObjectFromSearchResults(session, rem);
+                        }
+                        
+                    }
+                } else {
+                    debug(DEBUG_VERBOSE,"(incomplete)\n");
+                    return CKR_ARGUMENTS_BAD;
+                }    
+                break;
+            case CKA_ID:
+                //Only Certificate and key objects have this
+                if (pTemplate[i].pValue != NULL) {
+                    debug(DEBUG_VERBOSE,"(%s)\n",hexify(pTemplate[i].pValue,pTemplate[i].ulValueLen));
+                    objectEntry *cur = session->objectList;
+                    while(cur != NULL) {
+                        if(cur->keyId.Length == pTemplate[i].ulValueLen &&
+                           memcmp(cur->keyId.Data, pTemplate[i].pValue,pTemplate[i].ulValueLen) == 0) {
+                            
+                            //keep this object
+                            cur = cur->nextObject;
+                        } else {
+                            objectEntry *rem = cur;
+                            cur = cur->nextObject;
+                            removeObjectFromSearchResults(session, rem);
+                        }
+                        
+                    }
+                    break;
+                
+                case CKA_PRIVATE:
+                    //All storage objects have this
+                    if (pTemplate[i].pValue != NULL) {
+                        CK_BBOOL private = CK_TRUE;
+                        objectEntry *cur = session->objectList;
+                        memcpy(&private, pTemplate[i].pValue, pTemplate[i].ulValueLen);
+                        if(private == CK_TRUE)
+                            debug(DEBUG_VERBOSE,"(true)\n");
+                        else 
+                            debug(DEBUG_VERBOSE,"(false)\n");
+                        
+                        //private keys are private, else public
+                        while(cur != NULL) {
+                            if(private == CK_TRUE) {
+                                if(cur->class == CKO_PRIVATE_KEY) {
+                                     cur = cur->nextObject;
+                                } else {
+                                    objectEntry *rem = cur;
+                                    cur = cur->nextObject;
+                                    removeObjectFromSearchResults(session, rem);
+                                }
+                            } else {
+                                if(cur->class == CKO_PRIVATE_KEY) {
+                                    objectEntry *rem = cur;
+                                    cur = cur->nextObject;
+                                    removeObjectFromSearchResults(session, rem);
+                                } else {
+                                    cur = cur->nextObject;
+                                }
+                            }
+                        }
+                    } else {
+                        debug(DEBUG_VERBOSE,"(incomplete)\n");
+                        return CKR_ARGUMENTS_BAD;
+                    }
+                    break;
+                                    
+                    
+                case CKA_MODIFIABLE: 
+                    //All storage objects have this
+                    if(pTemplate[i].pValue != NULL) {
+                        CK_BBOOL modifiable = CK_TRUE;
+                        memcpy(&modifiable, pTemplate[i].pValue, pTemplate[i].ulValueLen);
+                        //All our objects are read-only
+                        if(modifiable == CK_TRUE) {
+                            debug(DEBUG_VERBOSE,"(true)\n");
+                            // remove eveything
+                            freeObjectSearchList(session);
+                        } else {
+                            debug(DEBUG_VERBOSE,"(false)\n");
+                        }
+                    } else {
+                        debug(DEBUG_VERBOSE,"(incomplete)\n");
+                        return CKR_ARGUMENTS_BAD;
+                    }
+                    break;
+                    
+                    
+                case CKA_TOKEN:
+                    //All storage objects have this
+                    if(pTemplate[i].pValue != NULL) {
+                        CK_BBOOL token = CK_TRUE;
+                        memcpy(&token, pTemplate[i].pValue, pTemplate[i].ulValueLen);
+                        //All our objects are "token" objets
+                        if(token == CK_FALSE) {
+                            debug(DEBUG_VERBOSE,"(false)\n");
+                            // remove eveything
+                            freeObjectSearchList(session);
+                        } else {
+                            debug(DEBUG_VERBOSE,"(true)\n");
+                        }
+                    } else {
+                        debug(DEBUG_VERBOSE,"(incomplete)\n");
+                        return CKR_ARGUMENTS_BAD;
+                    }
+                    break;
+                        
+                case CKA_KEY_TYPE:
+                    //All key objects have this
+                    
+                    if(pTemplate[i].pValue != NULL) {
+                        
+                        //TODO: do something useful with this
+                        switch(  *((CK_KEY_TYPE *) pTemplate[i].pValue) ) {
+                            case CKK_RSA:
+                                debug(DEBUG_VERBOSE,"(CKK_RSA)\n");
+                                break;
+                            case CKK_DSA:
+                                debug(DEBUG_VERBOSE,"(CKK_DSA)\n");
+                                break;
+                            case CKK_DH:
+                                debug(DEBUG_VERBOSE,"(CKK_DH)\n");
+                                break;
+                            default:
+                                debug(DEBUG_VERBOSE,"(0x%X)\n",*((CK_KEY_TYPE *) pTemplate[i].pValue));
+                                break;
+                        }
+                    } else {
+                        debug(DEBUG_VERBOSE,"(incomplete)\n");
+                        return CKR_ARGUMENTS_BAD;
+                    }
+                    break;
+                      
+                case CKA_SUBJECT:
+                    // Only Public key and Certificates have this
+                    
+                    /* DER-encoded certificate subject name */
+                    if(pTemplate[i].pValue != NULL) {
+                        
+                        objectEntry *cur = session->objectList;
+                        while(cur != NULL) {
+                            if(cur->class == CKO_CERTIFICATE || cur->class == CKO_PUBLIC_KEY) {
+                                if(cur->storage.certificate.x509 == NULL) {
+                                    objectEntry *rem = cur;
+                                    cur = cur->nextObject;
+                                    debug(DEBUG_VERBOSE," cert is null\n");
+                                    removeObjectFromSearchResults(session, rem);
+                                    
+                                } else {
+                                    int n = i2d_X509_NAME(cur->storage.certificate.x509->cert_info->subject, NULL);
+                                    if (pTemplate[i].ulValueLen != n) {
+                                        //too small to match
+                                        objectEntry *rem = cur;
+                                        cur = cur->nextObject;
+                                        debug(DEBUG_VERBOSE," subject name different size from template\n");
+                                        removeObjectFromSearchResults(session, rem);
+                                    } else {
+                                        unsigned char *sn;
+                                        n = i2d_X509_NAME(cur->storage.certificate.x509->cert_info->subject, &sn);
+                                        if(memcmp(sn, pTemplate[i].pValue, n) != 0) {
+                                            objectEntry *rem = cur;
+                                            cur = cur->nextObject;
+                                            debug(DEBUG_VERBOSE," subject dosnt match template\n");
+                                            removeObjectFromSearchResults(session, rem);
+                                        }
+                                    }
+                                }
+                            } else {
+                                objectEntry *rem = cur;
+                                cur = cur->nextObject;
+                                debug(DEBUG_VERBOSE," not a certificate or public key\n");
+                                removeObjectFromSearchResults(session, rem);
+                            }
+                        }
+                    } else {
+                        debug(DEBUG_VERBOSE,"(incomplete)\n");
+                        return CKR_ARGUMENTS_BAD;
+                    }
+                    break;
+                    
+                case CKA_CERTIFICATE_TYPE:
+                    //All Certificate objects have this
+                    if (pTemplate[i].pValue != NULL) {
+                        objectEntry *cur = session->objectList;
+                        CK_CERTIFICATE_TYPE certType = CKC_X_509;
+                        memcpy(&certType, pTemplate[i].pValue, sizeof(CK_CERTIFICATE_TYPE));
+                        debug(DEBUG_VERBOSE,"(%s)\n",getCKCName(certType));
+                        
+                        if(certType != CKC_X_509) {
+                            //all certs are X.509 certs
+                            freeObjectSearchList(session);
+                        } else {
+                            while(cur != NULL) {
+                                if(cur->class != CKO_CERTIFICATE) {
+                                    objectEntry *rem = cur;
+                                    cur = cur->nextObject;
+                                    removeObjectFromSearchResults(session, rem);
+                                } else {
+                                    cur = cur->nextObject;
+                                }
+                            }
+                        }
+                        
+                    } else {
+                        debug(DEBUG_VERBOSE,"(incomplete)\n");
+                        return CKR_ARGUMENTS_BAD;
+                    }
+                    break;
+                    
+                case CKA_CERTIFICATE_CATEGORY:
+                    //Only certificates have this
+
+                    /* 0 = unspecified (default)
+                     * 1 = token user (priv-key availible)
+                     * 2 = CA cert
+                     * 3 = other
+                     */
+                    if (pTemplate[i].pValue != NULL) {
+                        CK_ULONG certCat = 0;
+                        objectEntry *cur = session->objectList;
+                        memcpy(&certCat, pTemplate[i].pValue, pTemplate[i].ulValueLen);
+                        debug(DEBUG_VERBOSE,"(%u)\n", certCat);
+                        while(cur != NULL) {
+                            if(cur->class != CKO_CERTIFICATE) {
+                                objectEntry *rem = cur;
+                                cur = cur->nextObject;
+                                removeObjectFromSearchResults(session, rem);
+                            } else if(certCat == 1) {
+                                if(cur->storage.certificate.havePrivateKey) {
+                                    //keep this object
+                                    cur = cur->nextObject;
+                                } else {
+                                    objectEntry *rem = cur;
+                                    cur = cur->nextObject;
+                                    removeObjectFromSearchResults(session, rem);
+                                }
+                            } //TODO handle the other categories
+                        }
+                    } else {
+                        debug(DEBUG_VERBOSE,"(incomplete)\n");
+                        return CKR_ARGUMENTS_BAD;
+                    }
+                    break;
+                    
+                case CKA_CHECK_VALUE:
+                    //only certificates have this
+
+                    /* The value of this attribute is derived from the certificate by 
+                     * taking the first three bytes of the SHA-1 hash of the certificate
+                     * object’s CKA_VALUE attribute. 
+                     */
+                    if (pTemplate[i].pValue != NULL && pTemplate[i].ulValueLen == 3) {
+                        objectEntry *cur = session->objectList;
+                        while(cur != NULL) {
+                            debug(DEBUG_VERBOSE,"(%s)\n",hexify(pTemplate[i].pValue,3));
+                            
+                            if(cur->class != CKO_CERTIFICATE) {
+                                objectEntry *rem = cur;
+                                cur = cur->nextObject;
+                                removeObjectFromSearchResults(session, rem);
+                            } else {
+                                unsigned char digest[SHA_DIGEST_LENGTH];
+                                CSSM_DATA certData;
+                                OSStatus status = 0;
+                                
+                                status = SecCertificateGetData(cur->storage.certificate.certRef, &certData);
+                                if (status != 0) {
+                                    debug(DEBUG_VERBOSE,"Unable to get certificate (%s)\n", getSecErrorName(status));
+                                    return CKR_GENERAL_ERROR;
+                                }
+                                
+                                SHA1(certData.Data, certData.Length, digest);
+                                
+                                if(memcmp(digest, pTemplate[i].pValue, 3) == 0) {
+                                    //keep this object
+                                    cur = cur->nextObject;
+                                } else {
+                                    objectEntry *rem = cur;
+                                    cur = cur->nextObject;
+                                    removeObjectFromSearchResults(session, rem);
+                                }
+                            }
+                        }
+                    } else {
+                        debug(DEBUG_VERBOSE,"(incomplete)\n");
+                        return CKR_ARGUMENTS_BAD;
+                    }
+                    break;
+                    
+                    
+                    
+                case CKA_ISSUER:
+                    //Only certificates have this
+                    
+                    /* DER-encoded certificate issuer name */
+                    if(pTemplate[i].pValue != NULL) {
+                        objectEntry *cur = session->objectList;
+                        debug(DEBUG_VERBOSE,"(%s)\n",hexify(pTemplate[i].pValue,pTemplate[i].ulValueLen));
+                        
+                        while(cur != NULL) {
+                            if(cur->class != CKO_CERTIFICATE) {
+                                objectEntry *rem = cur;
+                                cur = cur->nextObject;
+                                removeObjectFromSearchResults(session, rem);
+                            } else {
+                                int n = i2d_X509_NAME(cur->storage.certificate.x509->cert_info->issuer, NULL);
+                                if (pTemplate[i].ulValueLen < n) {
+                                    //too small to match
+                                    objectEntry *rem = cur;
+                                    cur = cur->nextObject;
+                                    removeObjectFromSearchResults(session, rem);                            
+                                } else {
+                                    unsigned char *in,*inorig;
+                                    n = i2d_X509_NAME(cur->storage.certificate.x509->cert_info->issuer, NULL);
+                                    in = malloc(n);
+                                    inorig = in;
+                                    n = i2d_X509_NAME(cur->storage.certificate.x509->cert_info->issuer, &in);
+                                    in = inorig;
+                                    if(memcmp(in, pTemplate[i].pValue, n) != 0) {
+                                        objectEntry *rem = cur;
+                                        cur = cur->nextObject;
+                                        removeObjectFromSearchResults(session, rem);
+                                    }
+                                    free(in);
+                                    cur = cur->nextObject;
+                                }
+                            }
+                        }
+                    } else {
+                        debug(DEBUG_VERBOSE,"(incomplete)\n");
+                        return CKR_ARGUMENTS_BAD;
+                    }
+                    break;
+                    
+                case CKA_SERIAL_NUMBER:
+                    //Only certificate objects have this
+                    
+                    /* DER-encoded certificate serial number */
+                    if(pTemplate[i].pValue != NULL) {
+                        objectEntry *cur = session->objectList;
+                        debug(DEBUG_VERBOSE,"(%s)\n",hexify(pTemplate[i].pValue,pTemplate[i].ulValueLen));
+                        
+                        while(cur != NULL) {
+                            if(cur->class != CKO_CERTIFICATE) {
+                                objectEntry *rem = cur;
+                                cur = cur->nextObject;
+                                removeObjectFromSearchResults(session, rem);
+                            } else {
+                                int n = i2d_ASN1_INTEGER(cur->storage.certificate.x509->cert_info->serialNumber, NULL);
+                                if (pTemplate[i].ulValueLen < n) {
+                                    //too small to match
+                                    objectEntry *rem = cur;
+                                    cur = cur->nextObject;
+                                    removeObjectFromSearchResults(session, rem);                            
+                                } else {
+                                    unsigned char *sn,*snorig;
+                                    n = i2d_ASN1_INTEGER(cur->storage.certificate.x509->cert_info->serialNumber, NULL);
+                                    sn = malloc(n);
+                                    snorig = sn;
+                                    n = i2d_ASN1_INTEGER(cur->storage.certificate.x509->cert_info->serialNumber, &sn);
+                                    sn = snorig;
+                                    if(memcmp(sn, pTemplate[i].pValue, n) != 0) {
+                                        objectEntry *rem = cur;
+                                        cur = cur->nextObject;
+                                        removeObjectFromSearchResults(session, rem);
+                                    }
+                                    free(sn);
+                                    cur = cur->nextObject;
+                                }
+                            }
+                        }
+                    } else {
+                        debug(DEBUG_VERBOSE,"(incomplete)\n");
+                        return CKR_ARGUMENTS_BAD;
+                    }
+                    break;
+                                    
+                case CKA_VALUE:
+                    //Can only compare with certs and public keys
+                    if (pTemplate[i].pValue != NULL) {
+                        objectEntry *cur = session->objectList;
+                        while(cur != NULL) {
+                            debug(DEBUG_VERBOSE,"(len=%u)\n",pTemplate[i].ulValueLen);
+                            
+                            if(cur->class == CKO_PRIVATE_KEY) {
+                                objectEntry *rem = cur;
+                                cur = cur->nextObject;
+                                removeObjectFromSearchResults(session, rem);
+                            } else {
+                                CSSM_DATA data;
+                                
+                                if(cur->class == CKO_CERTIFICATE) {
+                                    unsigned char* tmp;
+                                    data.Length = i2d_X509(cur->storage.certificate.x509, NULL);
+                                    data.Data = malloc(data.Length);
+                                    tmp = data.Data;
+                                    i2d_X509(cur->storage.certificate.x509, &tmp);
+                                    data.Data = tmp;
+                                } else if(cur->class == CKO_PUBLIC_KEY) {
+                                    unsigned char* tmp;
+                                    data.Length = i2d_X509(cur->storage.publicKey.pubKey, NULL);
+                                    data.Data = malloc(data.Length);
+                                    tmp = data.Data;
+                                    i2d_X509(cur->storage.certificate.x509, &tmp);
+                                    data.Data = tmp;
+                                } else {
+                                    objectEntry *rem = cur;
+                                    cur = cur->nextObject;
+                                    removeObjectFromSearchResults(session, rem);
+                                    continue;
+                                }
+                                
+                                if(data.Length == pTemplate[i].ulValueLen &&
+                                   memcmp(data.Data, pTemplate[i].pValue, data.Length) == 0) {
+                                    //keep this object
+                                    cur = cur->nextObject;
+                                } else {
+                                    objectEntry *rem = cur;
+                                    cur = cur->nextObject;
+                                    removeObjectFromSearchResults(session, rem);
+                                }
+                            }
+                        }
+                    } else {
+                        debug(DEBUG_VERBOSE,"(incomplete)\n");
+                        return CKR_ARGUMENTS_BAD;
+                    }
+                    break;
+                    
+                case CKA_URL:
+                case CKA_HASH_OF_SUBJECT_PUBLIC_KEY:
+                case CKA_HASH_OF_ISSUER_PUBLIC_KEY:
+                case CKA_JAVA_MIDP_SECURITY_DOMAIN:
+                case CKA_START_DATE:
+                case CKA_END_DATE:
+                case CKA_DERIVE:
+                case CKA_LOCAL:
+                case CKA_KEY_GEN_MECHANISM:
+                case CKA_ALLOWED_MECHANISMS:
+                case CKA_SENSITIVE:                 
+                case CKA_ENCRYPT:
+                case CKA_DECRYPT:
+                case CKA_SIGN:
+                case CKA_SIGN_RECOVER:
+                case CKA_VERIFY:
+                case CKA_VERIFY_RECOVER:
+                case CKA_WRAP:
+                case CKA_UNWRAP:
+                case CKA_TRUSTED:
+                case CKA_EXTRACTABLE:
+                case CKA_ALWAYS_SENSITIVE:
+                case CKA_NEVER_EXTRACTABLE:
+                case CKA_WRAP_WITH_TRUSTED:
+                case CKA_WRAP_TEMPLATE:
+                case CKA_UNWRAP_TEMPLATE:
+                case CKA_ALWAYS_AUTHENTICATE:
+                    //TODO
+                    debug(DEBUG_VERBOSE,"(todo)\n");
+                    break;
+                    
+                    
+                    
+           
+                    
+                default:
+                    debug(DEBUG_INFO,"Requested unknown attribute: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
+                    
+                }
+        }
+        
     }
-    
-    
+    {
+        int n = 0;
+        objectSearchEntry *o = session->searchList;
+        while(o != NULL) {
+            n++;
+            o = o->next;
+        }
+        debug(DEBUG_VERBOSE,"Found %d objects\n",n);
+    }
+    session->cursor = session->searchList;
     if(mutex.use) {
         mutex.UnlockMutex(session->myMutex);
     }

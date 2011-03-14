@@ -15,7 +15,7 @@
 
 #include "mypkcs11.h"
 
-#define DEBUG 1
+
 
 #define DEBUG_CRITICAL  1
 #define DEBUG_WARNING   2
@@ -23,7 +23,9 @@
 #define DEBUG_INFO      4
 #define DEBUG_VERBOSE   5
 
-#define DEBUG_LEVEL DEBUG_VERBOSE
+#ifndef DEBUG_LEVEL
+#define DEBUG_LEVEL DEBUG_CRITICAL
+#endif
 
 
 

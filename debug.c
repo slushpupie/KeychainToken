@@ -3,7 +3,20 @@
  *  KeychainToken
  *
  *  Created by Jay Kline on 7/1/09.
- *  Copyright 2009 All rights reserved.
+ *  Copyright 2009
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
 
@@ -16,11 +29,11 @@ char *hexify(unsigned char *data, int len) {
     int i;
     char hexDigits[] = { '0', '1', '2', '3', '4', '5', '6', '7',
     '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };
-    
+
     s = (char *)malloc(len * 2 + 1);
     if (!s) return(NULL);
     memset(s, 0, len * 2 + 1);
-    
+
     for  (i=0; i<len; i++) {
         s[i*2] = hexDigits[(data[i] >> 4) & 0x0f];
         s[i*2 + 1] = hexDigits[data[i] & 0x0f];
@@ -30,7 +43,7 @@ char *hexify(unsigned char *data, int len) {
 
 char *stringify(unsigned char *str, int length) {
     static char my_string[128];
-    
+
     if (length >= 128) return(NULL);
     memset(my_string, 0, sizeof(my_string));
     memcpy(my_string, str, length);
@@ -287,7 +300,7 @@ const char * getCKMName(CK_MECHANISM_TYPE mech) {
         case CKM_DSA_PARAMETER_GEN: return "CKM_DSA_PARAMETER_GEN";
         case CKM_DH_PKCS_PARAMETER_GEN: return "CKM_DH_PKCS_PARAMETER_GEN";
         case CKM_X9_42_DH_PARAMETER_GEN: return "CKM_X9_42_DH_PARAMETER_GEN";
-        case CKM_VENDOR_DEFINED: return "CKM_VENDOR_DEFINED";            
+        case CKM_VENDOR_DEFINED: return "CKM_VENDOR_DEFINED";
             /** Netscape Specific **/
         case CKM_FAKE_RANDOM: return "CKM_FAKE_RANDOM";
         case CKM_INVALID_MECHANISM: return "CKM_INVALID_MECHANISM";
@@ -309,7 +322,7 @@ const char * getCKMName(CK_MECHANISM_TYPE mech) {
         default:
             return "";
     }
-}    
+}
 
 const char * getCKAName(CK_ATTRIBUTE_TYPE attrib) {
     switch (attrib) {
@@ -454,7 +467,7 @@ const char * getCKAName(CK_ATTRIBUTE_TYPE attrib) {
             return "";
     }
 }
-                                     
+
 const char * getCKOName(CK_OBJECT_CLASS class) {
     switch (class) {
         case CKO_DATA: return "CKO_DATA";
@@ -466,7 +479,7 @@ const char * getCKOName(CK_OBJECT_CLASS class) {
         case CKO_DOMAIN_PARAMETERS: return "CKO_DOMAIN_PARAMETERS";
         case CKO_MECHANISM: return "CKO_MECHANISM";
         case CKO_OTP_KEY: return "CKO_OTP_KEY";
-        case CKO_VENDOR_DEFINED: return "CKO_VENDOR_DEFINED";            
+        case CKO_VENDOR_DEFINED: return "CKO_VENDOR_DEFINED";
             /** Netscape Specific **/
         case CKO_NSS: return "CKO_NSS";
         case CKO_NSS_CRL: return "CKO_NSS_CRL";
@@ -475,9 +488,9 @@ const char * getCKOName(CK_OBJECT_CLASS class) {
         case CKO_NSS_BUILTIN_ROOT_LIST: return "CKO_NSS_BUILTIN_ROOT_LIST";
         case CKO_NSS_NEWSLOT: return "CKO_NSS_NEWSLOT";
         case CKO_NSS_DELSLOT: return "CKO_NSS_DELSLOT";
-            
+
         default:
-            return "";    
+            return "";
     }
 }
 
@@ -575,7 +588,7 @@ const char * getCKRName(CK_RV rv) {
         case CKR_NSS: return "CKR_NSS";
         case CKR_NSS_CERTDB_FAILED: return "CKR_NSS_CERTDB_FAILED";
         case CKR_NSS_KEYDB_FAILED: return "CKR_NSS_KEYDB_FAILED";
-            
+
         default:
             return "";
     }
@@ -649,12 +662,12 @@ const char * getSecErrorName(OSStatus status) {
 
 void
 debug(int level, const char *format, ...) {
-#ifdef DEBUG 
+#ifdef DEBUG
     va_list args;
-    
+
     if (level > DEBUG_LEVEL)
         return;
-    
+
     va_start(args, format);
     vfprintf(stderr, format, args);
     va_end(args);
@@ -662,5 +675,3 @@ debug(int level, const char *format, ...) {
     /* empty */
 #endif
 }
-
-

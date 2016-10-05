@@ -29,18 +29,11 @@
 #include "pkcs11.h"
 #include "debug.h"
 
-#ifndef _WIN32
 #include <termios.h>
 #include <dlfcn.h>
 #define GetFuncFromMod dlsym
 #define CloseMod dlclose
 typedef void *LpHandleType;
-#else
-#include <io.h>
-#define GetFuncFromMod GetProcAddress
-#define CloseMod FreeLibrary
-typedef HINSTANCE LpHandleType;
-#endif
 
 
 void hexdump(unsigned char *, int);

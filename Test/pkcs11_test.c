@@ -487,17 +487,9 @@ CK_RV load_library(char *library, CK_FUNCTION_LIST_PTR *p11p) {
         *p11p = NULL;
         return(-1);
     }
-#ifdef _WIN32
-    p11lib_handle = LoadLibrary(library);
-#else
     p11lib_handle = dlopen(library, RTLD_NOW);
-#endif
     if (p11lib_handle == NULL) {
-#ifdef _WIN32
-        printf("Error loading PKCS11 library: %s\n", (char *)GetLastError);
-#else
         printf("Error loading PKCS11 library: %s\n", dlerror());
-#endif
         return(EXIT_FAILURE);
     }
 
@@ -505,12 +497,7 @@ CK_RV load_library(char *library, CK_FUNCTION_LIST_PTR *p11p) {
     GetFuncFromMod(p11lib_handle,
                    "C_GetFunctionList");
     if (getflist == NULL) {
-#ifdef _WIN32
-        printf("Error finding \"C_GetFunctionList\" symbol: %s\n",
-               (char *)GetLastError);
-#else
         printf("Error finding \"C_GetFunctionList\" symbol: %s\n", dlerror());
-#endif
         return(EXIT_FAILURE);
     }
 
@@ -523,19 +510,13 @@ CK_RV load_library(char *library, CK_FUNCTION_LIST_PTR *p11p) {
 }
 
 CK_RV getPassword(CK_UTF8CHAR *pass, CK_ULONG *length) {
-#ifndef _WIN32
     struct termios t, save;
     int ret;
-#else
-    HANDLE handle;
-    DWORD old_mode, new_mode;
-#endif
     char *cp;
 
     if (pass == NULL || length == NULL)
         return(-1);
 
-#ifndef _WIN32
     memset(&t, 0, sizeof(t));
     ret = tcgetattr(fileno(stdin), &t);
     if (ret) return(CKR_GENERAL_ERROR);
@@ -545,24 +526,6 @@ CK_RV getPassword(CK_UTF8CHAR *pass, CK_ULONG *length) {
 
     ret = tcsetattr(fileno(stdin), TCSANOW, &t);
     if (ret) return(CKR_GENERAL_ERROR);
-#else
-    handle = GetStdHandle(STD_INPUT_HANDLE);
-    if (handle == INVALID_HANDLE_VALUE)
-        return ENOTTY;
-    if (!GetConsoleMode(handle, &old_mode))
-        return ENOTTY;
-
-    new_mode = old_mode;
-    new_mode |= ( ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT );
-    new_mode &= ~( ENABLE_ECHO_INPUT );
-
-    if (!SetConsoleMode(handle, new_mode))
-        return ENOTTY;
-    if (!SetConsoleMode(handle, old_mode))
-        return ENOTTY;
-    if (!SetConsoleMode(handle, new_mode))
-        return ENOTTY;
-#endif
 
     (void)fgets((char *)pass, (int)*length, stdin);
     cp = strchr((char *)pass, '\n');
@@ -571,13 +534,8 @@ CK_RV getPassword(CK_UTF8CHAR *pass, CK_ULONG *length) {
 
     *length = (CK_ULONG)strlen((char *)pass);
 
-#ifndef _WIN32
     ret = tcsetattr(fileno(stdin), TCSANOW, &save);
     if (ret) return(CKR_GENERAL_ERROR);
-#else
-    if (!SetConsoleMode(handle, old_mode))
-        return ENOTTY;
-#endif
     printf("\n");
     return(0);
 

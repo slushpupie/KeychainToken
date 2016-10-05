@@ -144,10 +144,10 @@ SUPPORTED(C_GetSessionInfo, getSessionInfo,
           (hSession, pInfo) )
 NOTSUPPORTED(C_GetOperationState, (CK_SESSION_HANDLE hSession, CK_BYTE_PTR pOperationState, CK_ULONG_PTR pulOperationStateLen))
 NOTSUPPORTED(C_SetOperationState, (CK_SESSION_HANDLE hSession, CK_BYTE_PTR pOperationState, CK_ULONG ulOperationStateLen, CK_OBJECT_HANDLE hEncryptionKey, CK_OBJECT_HANDLE hAuthenticationkey))
-SUPPORTED(C_Login, login,
+SUPPORTED(C_Login, doLogin,
           (CK_SESSION_HANDLE hSession, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen),
           (hSession, userType, pPin, ulPinLen))
-SUPPORTED(C_Logout, logout,
+SUPPORTED(C_Logout, doLogout,
           (CK_SESSION_HANDLE hSession),
           (hSession))
 NOTSUPPORTED(C_CreateObject, (CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_OBJECT_HANDLE_PTR phObject))

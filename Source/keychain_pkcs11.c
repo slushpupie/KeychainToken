@@ -513,7 +513,7 @@ getSessionInfo(CK_SESSION_HANDLE hSession, CK_SESSION_INFO_PTR pInfo)
 }
 
 CK_RV
-login(CK_SESSION_HANDLE hSession, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen)
+doLogin(CK_SESSION_HANDLE hSession, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen)
 {
     OSStatus status = 0;
     sessionEntry *session;
@@ -573,7 +573,7 @@ login(CK_SESSION_HANDLE hSession, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, C
 }
 
 CK_RV
-logout(CK_SESSION_HANDLE hSession)
+doLogout(CK_SESSION_HANDLE hSession)
 {
     sessionEntry *session;
     OSStatus status;

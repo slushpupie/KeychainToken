@@ -91,7 +91,7 @@ CK_RV getPassword(CK_UTF8CHAR *pass, CK_ULONG *length) {
     return(0);
 }
 
-CK_RV login(CK_FUNCTION_LIST_PTR p11p, CK_SESSION_HANDLE hSession, int admin, CK_UTF8CHAR *password, CK_ULONG passwordLen) {
+CK_RV doLogin(CK_FUNCTION_LIST_PTR p11p, CK_SESSION_HANDLE hSession, int admin, CK_UTF8CHAR *password, CK_ULONG passwordLen) {
     CK_UTF8CHAR pin[64];
     CK_ULONG pinLen = sizeof(pin) - 1;
     CK_RV rv;
@@ -279,7 +279,7 @@ int main(int argc, char *argv[]) {
     }
 
 
-    rv = login(p11p, hSession, 0, NULL, 0);
+    rv = doLogin(p11p, hSession, 0, NULL, 0);
     if (rv != CKR_OK) {
         fprintf(stderr, "Error logging into token (rv = %X)\n", rv);
         (void)p11p->C_CloseSession(hSession);
@@ -523,7 +523,7 @@ int main(int argc, char *argv[]) {
 
 
 
-    rv = login(p11p, hSession, 0, NULL, 0);
+    rv = doLogin(p11p, hSession, 0, NULL, 0);
      if (rv != CKR_OK) {
          fprintf(stderr, "Error logging into token (rv = %X)\n", rv);
         (void)p11p->C_CloseSession(hSession);

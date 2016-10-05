@@ -1232,7 +1232,7 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
                                     data.Data = tmp;
                                 } else if(cur->class == CKO_PUBLIC_KEY) {
                                     unsigned char* tmp;
-                                    data.Length = i2d_X509(cur->storage.publicKey.pubKey, NULL);
+                                    data.Length = i2d_PUBKEY(cur->storage.publicKey.pubKey, NULL);
                                     data.Data = malloc(data.Length);
                                     tmp = data.Data;
                                     i2d_X509(cur->storage.certificate.x509, &tmp);

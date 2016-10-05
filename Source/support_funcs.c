@@ -1547,18 +1547,6 @@ setString(char *in, char *out, int len)
     memcpy(out, in, MIN(strlen(in),len) );
 }
 
-char *
-basename(const char *input)
-{
-    const char *base;
-    for(base = input; *input; input++) {
-        if( (*input) == '/' ) {
-            base = input + 1;
-        }
-    }
-    return (char *) base;
-}
-
 void
 setDateFromASN1Time(const ASN1_TIME *aTime, char *out)
 {

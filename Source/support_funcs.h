@@ -73,7 +73,6 @@ CK_RV getAttributeValuePublicKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate
 CK_RV getAttributeValuePrivateKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount);
 
 void setString(char *in, char *out, int len);
-char * basename(const char *input);
 void setDateFromASN1Time(const ASN1_TIME *aTime, char *out);
 
 CSSM_ALGORITHMS pMechanismToCSSM_ALGID(CK_MECHANISM_PTR pMechanism);

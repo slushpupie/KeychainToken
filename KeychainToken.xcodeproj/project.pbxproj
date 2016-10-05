@@ -37,6 +37,7 @@
 		883BD2CD1DA57F4600051423 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		883BD2CF1DA57F5700051423 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 		883BD2D11DA57FDB00051423 /* CoreServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreServices.framework; path = System/Library/Frameworks/CoreServices.framework; sourceTree = SDKROOT; };
+		88508A1D1DA58CDF00954EB7 /* COPYING */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = COPYING; sourceTree = "<group>"; };
 		88BBBA201DA584070080254D /* pkcs11.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pkcs11.h; sourceTree = "<group>"; };
 		88BBBA211DA584070080254D /* README */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -65,12 +66,13 @@
 		08FB7794FE84155DC02AAC07 /* KeychainToken */ = {
 			isa = PBXGroup;
 			children = (
+				88508A1D1DA58CDF00954EB7 /* COPYING */,
+				692302C20FF925BB0031A8B7 /* README */,
 				692300C10FF55CDA0031A8B7 /* Frameworks */,
 				88BBBA1E1DA584070080254D /* 3rdParty */,
 				08FB7795FE84155DC02AAC07 /* Source */,
 				88613B871DA5815A00E8DD52 /* Test */,
 				1AB674ADFE9D54B511CA2CBB /* Products */,
-				692302C20FF925BB0031A8B7 /* README */,
 			);
 			name = KeychainToken;
 			sourceTree = "<group>";
@@ -78,16 +80,16 @@
 		08FB7795FE84155DC02AAC07 /* Source */ = {
 			isa = PBXGroup;
 			children = (
+				697EEADA10039CA20063C91C /* constants.h */,
+				6924E80A0FFC0A9A00907808 /* debug.h */,
+				6924E80B0FFC0A9A00907808 /* debug.c */,
 				6983BB7B0FF008B100FED01D /* keychain_pkcs11.h */,
 				6983BB7C0FF008B100FED01D /* keychain_pkcs11.c */,
 				6923007F0FF557160031A8B7 /* preferences.h */,
 				692300800FF557160031A8B7 /* preferences.c */,
-				6924E80A0FFC0A9A00907808 /* debug.h */,
-				6924E80B0FFC0A9A00907808 /* debug.c */,
 				697EEACC100397560063C91C /* support_funcs.h */,
 				697EEACD100397560063C91C /* support_funcs.c */,
 				697EEAD310039A880063C91C /* types.h */,
-				697EEADA10039CA20063C91C /* constants.h */,
 			);
 			path = Source;
 			sourceTree = "<group>";
@@ -130,8 +132,8 @@
 		88BBBA1F1DA584070080254D /* scute */ = {
 			isa = PBXGroup;
 			children = (
-				88BBBA201DA584070080254D /* pkcs11.h */,
 				88BBBA211DA584070080254D /* README */,
+				88BBBA201DA584070080254D /* pkcs11.h */,
 			);
 			path = scute;
 			sourceTree = "<group>";

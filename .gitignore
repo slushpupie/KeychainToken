@@ -1,0 +1,8 @@
+# OS-related stuff
+*~
+.DS_Store
+.LSOverride
+
+# User-specific folders
+xcuserdata
+*.xccheckout

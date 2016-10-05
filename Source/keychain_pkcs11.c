@@ -310,17 +310,9 @@ waitForSlotEvent(CK_FLAGS flags, CK_SLOT_ID_PTR pSlot, CK_VOID_PTR pReserved)
     /* Since these are not tokens in the traditional sense, they cannot be inserted/removed
      * from a slot.  Thus, if CKF_DONT_BLOCK is called, all we do is return. Otherwise,
      * We are supposed to wait for a token insert/removal event that will never happen; so
-     * we essentially block forever. :-(
+     * we just return there too.
      */
-    if(flags & CKF_DONT_BLOCK) {
-        return CKR_NO_EVENT;
-    } else {
-        /* while(initialized) { sleep(1000); } */
-        return CKR_NO_EVENT;
-    }
-
-    debug(DEBUG_CRITICAL,"function not implemented\n");
-    return CKR_GENERAL_ERROR;
+    return CKR_NO_EVENT;
 }
 
 CK_RV

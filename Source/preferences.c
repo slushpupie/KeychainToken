@@ -19,8 +19,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 #include "preferences.h"
+
+#include <CoreServices/CoreServices.h>
 
 // Note: If not NULL the results have to be DisposePtr'ed.
 static char* Copy_CFStringRefToCString(const CFStringRef pCFStringRef)
@@ -44,16 +45,9 @@ static char* Copy_CFStringRefToCString(const CFStringRef pCFStringRef)
     return results;
 }
 
-
 #define kAppCFStr CFSTR("com.slushpupie.KeychainToken")
 
-
-
 int isKeychainListed(char *keychainPath, char *listName) {
-
-
-
-
     CFArrayRef    prefCFArrayRef = CFPreferencesCopyAppValue( CFStringCreateWithCString(NULL, listName, kCFStringEncodingASCII), kAppCFStr);
     CFIndex       blacklist,index;
     int           blacklisted = 0;

@@ -19,10 +19,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 #ifndef _TYPES_H_
 #define _TYPES_H_
-#include "constants.h"
+
+#include <openssl/x509.h>
 
 typedef struct _certObjectEntry {
     SecIdentityRef idRef;
@@ -54,7 +54,6 @@ typedef struct _objectEntry {
     CSSM_DATA keyId; //used for CKA_ID
     CSSM_DATA label; //used for CKA_LABEL
 
-
     struct _objectEntry *nextObject;
 
     union storage_t {
@@ -69,7 +68,6 @@ typedef struct _objectSearchEntry {
     objectEntry *object;
     struct _objectSearchEntry *next;
 } objectSearchEntry;
-
 
 typedef struct _sessionEntry {
     CK_SESSION_HANDLE id;
@@ -117,8 +115,5 @@ typedef struct _mutex_functions {
     CK_VOID_PTR sessionMutex;
 
 } mutexFunctions;
-
-
-
 
 #endif

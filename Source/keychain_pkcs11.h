@@ -19,44 +19,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
  */
-
 #ifndef _KEYCHAIN_PKCS11_H_
 #define _KEYCHAIN_PKCS11_H_
 
-
-#include <Carbon/Carbon.h>
-#include <CoreFoundation/CoreFoundation.h>
-#include <CoreFoundation/CFPreferences.h>
 #include <Security/Security.h>
-#include <stdio.h>
-#include <string.h>
-#include <Security/cssm.h>
-#include <openssl/x509.h>
-#include <time.h>
 
-#include "mypkcs11.h"
-#include "types.h"
+#include "pkcs11.h"
 #include "constants.h"
+#include "types.h"
 
-#include "support_funcs.h"
 #include "debug.h"
-#include "preferences.h"
-
-
-
-
-
-
-
-
-
 
 static CK_INFO ckInfo = {
-{2, 11},
-"KeychainToken",
-0,
-"Apple Keychain PKCS#11         ",
-{0, 1}
+    {2, 11},
+    "KeychainToken",
+    0,
+    "Apple Keychain PKCS#11         ",
+    {0, 1}
 };
 
 CK_BBOOL initialized = CK_FALSE;
@@ -155,10 +134,10 @@ SUPPORTED(C_GetSessionInfo, getSessionInfo,
           (hSession, pInfo) )
 NOTSUPPORTED(C_GetOperationState, (CK_SESSION_HANDLE hSession, CK_BYTE_PTR pOperationState, CK_ULONG_PTR pulOperationStateLen))
 NOTSUPPORTED(C_SetOperationState, (CK_SESSION_HANDLE hSession, CK_BYTE_PTR pOperationState, CK_ULONG ulOperationStateLen, CK_OBJECT_HANDLE hEncryptionKey, CK_OBJECT_HANDLE hAuthenticationkey))
-SUPPORTED(C_Login, login,
+SUPPORTED(C_Login, doLogin,
           (CK_SESSION_HANDLE hSession, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen),
           (hSession, userType, pPin, ulPinLen))
-SUPPORTED(C_Logout, logout,
+SUPPORTED(C_Logout, doLogout,
           (CK_SESSION_HANDLE hSession),
           (hSession))
 NOTSUPPORTED(C_CreateObject, (CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_OBJECT_HANDLE_PTR phObject))
@@ -244,14 +223,77 @@ NOTSUPPORTED(C_CancelFunction, (CK_SESSION_HANDLE hSession))
 
 CK_RV C_GetFunctionList(CK_FUNCTION_LIST_PTR_PTR pPtr);
 
-#undef  CK_NEED_ARG_LIST
-#undef  CK_PKCS11_FUNCTION_INFO
-#define CK_PKCS11_FUNCTION_INFO( func ) ( CK_ ## func ) func ,
-
 static CK_FUNCTION_LIST
 functionList =  {
     {2, 20}, // PKCS #11 spec version we support
-#include "pkcs11f.h"
+    (CK_C_Initialize) C_Initialize,
+    (CK_C_Finalize) C_Finalize,
+    (CK_C_GetInfo) C_GetInfo,
+    (CK_C_GetFunctionList) C_GetFunctionList,
+    (CK_C_GetSlotList) C_GetSlotList,
+    (CK_C_GetSlotInfo) C_GetSlotInfo,
+    (CK_C_GetTokenInfo) C_GetTokenInfo,
+    (CK_C_GetMechanismList) C_GetMechanismList,
+    (CK_C_GetMechanismInfo) C_GetMechanismInfo,
+    (CK_C_InitToken) C_InitToken,
+    (CK_C_InitPIN) C_InitPIN,
+    (CK_C_SetPIN) C_SetPIN,
+    (CK_C_OpenSession) C_OpenSession,
+    (CK_C_CloseSession) C_CloseSession,
+    (CK_C_CloseAllSessions) C_CloseAllSessions,
+    (CK_C_GetSessionInfo) C_GetSessionInfo,
+    (CK_C_GetOperationState) C_GetOperationState,
+    (CK_C_SetOperationState) C_SetOperationState,
+    (CK_C_Login) C_Login,
+    (CK_C_Logout) C_Logout,
+    (CK_C_CreateObject) C_CreateObject,
+    (CK_C_CopyObject) C_CopyObject,
+    (CK_C_DestroyObject) C_DestroyObject,
+    (CK_C_GetObjectSize) C_GetObjectSize,
+    (CK_C_GetAttributeValue) C_GetAttributeValue,
+    (CK_C_SetAttributeValue) C_SetAttributeValue,
+    (CK_C_FindObjectsInit) C_FindObjectsInit,
+    (CK_C_FindObjects) C_FindObjects,
+    (CK_C_FindObjectsFinal) C_FindObjectsFinal,
+    (CK_C_EncryptInit) C_EncryptInit,
+    (CK_C_Encrypt) C_Encrypt,
+    (CK_C_EncryptUpdate) C_EncryptUpdate,
+    (CK_C_EncryptFinal) C_EncryptFinal,
+    (CK_C_DecryptInit) C_DecryptInit,
+    (CK_C_Decrypt) C_Decrypt,
+    (CK_C_DecryptUpdate) C_DecryptUpdate,
+    (CK_C_DecryptFinal) C_DecryptFinal,
+    (CK_C_DigestInit) C_DigestInit,
+    (CK_C_Digest) C_Digest,
+    (CK_C_DigestUpdate) C_DigestUpdate,
+    (CK_C_DigestKey) C_DigestKey,
+    (CK_C_DigestFinal) C_DigestFinal,
+    (CK_C_SignInit) C_SignInit,
+    (CK_C_Sign) C_Sign,
+    (CK_C_SignUpdate) C_SignUpdate,
+    (CK_C_SignFinal) C_SignFinal,
+    (CK_C_SignRecoverInit) C_SignRecoverInit,
+    (CK_C_SignRecover) C_SignRecover,
+    (CK_C_VerifyInit) C_VerifyInit,
+    (CK_C_Verify) C_Verify,
+    (CK_C_VerifyUpdate) C_VerifyUpdate,
+    (CK_C_VerifyFinal) C_VerifyFinal,
+    (CK_C_VerifyRecoverInit) C_VerifyRecoverInit,
+    (CK_C_VerifyRecover) C_VerifyRecover,
+    (CK_C_DigestEncryptUpdate) C_DigestEncryptUpdate,
+    (CK_C_DecryptDigestUpdate) C_DecryptDigestUpdate,
+    (CK_C_SignEncryptUpdate) C_SignEncryptUpdate,
+    (CK_C_DecryptVerifyUpdate) C_DecryptVerifyUpdate,
+    (CK_C_GenerateKey) C_GenerateKey,
+    (CK_C_GenerateKeyPair) C_GenerateKeyPair,
+    (CK_C_WrapKey) C_WrapKey,
+    (CK_C_UnwrapKey) C_UnwrapKey,
+    (CK_C_DeriveKey) C_DeriveKey,
+    (CK_C_SeedRandom) C_SeedRandom,
+    (CK_C_GenerateRandom) C_GenerateRandom,
+    (CK_C_GetFunctionStatus) C_GetFunctionStatus,
+    (CK_C_CancelFunction) C_CancelFunction,
+    (CK_C_WaitForSlotEvent) C_WaitForSlotEvent,
 };
 
 CK_RV
@@ -263,6 +305,5 @@ C_GetFunctionList(CK_FUNCTION_LIST_PTR_PTR pPtr)
     *pPtr = &functionList;
     return CKR_OK;
 }
-
 
 #endif

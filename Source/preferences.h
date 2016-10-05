@@ -1,8 +1,8 @@
 /*
- *  mypkcs11.h
+ *  preferences.h
  *  KeychainToken
  *
- *  Created by Jay Kline on 6/23/09.
+ *  Created by Jay Kline on 6/26/09.
  *  Copyright 2009,2016
  *
  * This library is free software; you can redistribute it and/or
@@ -19,17 +19,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#ifndef _PREFERENCES_H_
+#define _PREFERENCES_H_
 
-#ifndef MYPKCS11_H
-#define MYPKCS11_H
-
-#define CK_PTR *
-#define CK_DECLARE_FUNCTION(rv,func) rv func
-#define CK_DECLARE_FUNCTION_POINTER(rv,func) rv (* func)
-#define CK_CALLBACK_FUNCTION(rv,func) rv (* func)
-#define CK_NULL_PTR 0
-
-#include "pkcs11.h"
-#include "pkcs11n.h"
+int isKeychainBlacklisted(char *keychainPath);
+int isKeychainWhitelisted(char *keychainPath);
+int isKeychainGreylisted(char *keychainPath);
+int useWhitelist();
 
 #endif

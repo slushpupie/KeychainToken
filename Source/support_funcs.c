@@ -19,15 +19,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 #include "support_funcs.h"
+
+#include <openssl/err.h>
+
+#include "debug.h"
+#include "preferences.h"
 
 unsigned int
 updateSlotList()
 {
     OSStatus status = 0;
     CFArrayRef kcSrchList = NULL;
-    unsigned int found = 0;
+    CFIndex found = 0;
     unsigned int i,j,whitelist;
 
 
@@ -309,7 +313,6 @@ freeObject(objectEntry *object)
         case CKO_HW_FEATURE:
         case CKO_DOMAIN_PARAMETERS:
         case CKO_MECHANISM:
-        case CKO_OTP_KEY:
             break;
 
     }
@@ -329,7 +332,7 @@ makeObjectFromCertificateRef(SecCertificateRef certRef, SecKeychainRef keychain,
     SecKeychainAttributeList *attrList = NULL;
     SecKeychainAttributeInfo *info = NULL;
     CSSM_DATA certData;
-    unsigned char *pData = NULL;
+    const unsigned char *pData = NULL;
     int ix;
 
     /*
@@ -569,7 +572,7 @@ makeObjectFromKeyRef(SecKeyRef keyRef, SecKeychainRef keychain, CK_OBJECT_CLASS 
         object->storage.publicKey.pubKey = d2i_PUBKEY(NULL, (void *) &data, CFDataGetLength(outData));
         if(object->storage.publicKey.pubKey == NULL) {
             char msg[1024];
-            int err = ERR_get_error();
+            unsigned long err = ERR_get_error();
             debug(DEBUG_VERBOSE, "Error parsing public key: %s\n", err, ERR_error_string(err, msg));
             return NULL;
         }
@@ -586,93 +589,6 @@ makeObjectFromKeyRef(SecKeyRef keyRef, SecKeychainRef keychain, CK_OBJECT_CLASS 
     return NULL;
 }
 
-/*
-objectEntry *
-makeObjectFromIdRef(SecIdentityRef idRef, CK_OBJECT_CLASS class)
-{
-    objectEntry *object = NULL;
-    OSStatus status;
-    SecCertificateRef certRef;
-    CSSM_DATA certData;
-    unsigned char *pData;
-    unsigned char digest[SHA_DIGEST_LENGTH];
-
-    status = SecIdentityCopyCertificate(idRef, &certRef);
-    if (status != 0) {
-        return NULL;
-    }
-
-    status = SecCertificateGetData(certRef, &certData);
-    if (status != 0) {
-        return NULL;
-    }
-    pData = certData.Data;
-
-
-    SHA1(certData.Data, certData.Length, digest);
-
-
-    object = malloc(sizeof(objectEntry));
-    if(!object) {
-        return NULL;
-    }
-    memset(object, 0, sizeof(objectEntry));
-    object->class = class;
-
-    switch(class) {
-        case CKO_CERTIFICATE:
-            object->storage.certificate.x509 = d2i_X509(NULL, (void *) &pData, certData.Length);
-            if(!object->storage.certificate.x509) {
-                debug(DEBUG_IMPORTANT,"OpenSSL failed to parse certificate\n");
-                free(object);
-                return NULL;
-            }
-            object->storage.certificate.certRef = certRef;
-            object->storage.certificate.idRef = idRef;
-            object->storage.certificate.havePrivateKey = 1;
-            memcpy(object->storage.certificate.keyId,digest,SHA_DIGEST_LENGTH);
-            CFRetain(object->storage.certificate.certRef);
-            CFRetain(object->storage.certificate.idRef);
-            return object;
-
-        case CKO_PUBLIC_KEY:
-            status = SecCertificateCopyPublicKey(certRef, &(object->storage.publicKey.keyRef));
-            if (status != 0) {
-                free(object);
-                return NULL;
-            }
-            object->storage.publicKey.idRef= idRef;
-            memcpy(object->storage.publicKey.keyId,digest,SHA_DIGEST_LENGTH);
-            CFRetain(object->storage.publicKey.keyRef);
-            CFRetain(object->storage.publicKey.idRef);
-            return object;
-
-        case CKO_PRIVATE_KEY:
-            object->storage.certificate.x509 = d2i_X509(NULL, (void *) &pData, certData.Length);
-            if(!object->storage.certificate.x509) {
-                debug(DEBUG_IMPORTANT,"OpenSSL failed to parse certificate\n");
-                free(object);
-                return NULL;
-            }
-
-            status = SecIdentityCopyPrivateKey(idRef, &(object->storage.privateKey.keyRef));
-            if (status != 0) {
-                free(object);
-                return NULL;
-            }
-            debug(DEBUG_VERBOSE,"*PrivateKey SecKeyRef=0x%X\n",object->storage.privateKey.keyRef);
-            object->storage.privateKey.idRef = idRef;
-            memcpy(object->storage.privateKey.keyId,digest,SHA_DIGEST_LENGTH);
-            CFRetain(object->storage.privateKey.keyRef);
-            CFRetain(object->storage.privateKey.idRef);
-
-            return object;
-
-    }
-    free(object);
-    return NULL;
-}
- */
 
 objectEntry *
 getObject(sessionEntry *session, CK_OBJECT_HANDLE hObject)
@@ -1128,13 +1044,6 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                     rv = CKR_ATTRIBUTE_TYPE_INVALID;
                 }
 
-            case CKA_NSS_EMAIL:
-                debug(DEBUG_VERBOSE,"  CKA_NSS_EMAIL\n");
-                /* Not supported */
-                pTemplate[i].ulValueLen = -1;
-                rv = CKR_ATTRIBUTE_TYPE_INVALID;
-                break;
-
             default:
                 debug(DEBUG_VERBOSE,"Unknown CKO_CERTIFICATE attribute requested: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
                 rv = CKR_ATTRIBUTE_TYPE_INVALID;
@@ -1404,12 +1313,12 @@ getAttributeValuePrivateKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_
                 char tag[] = "(  )";
 
 
-                int m = strlen(sn);
-                int n = strlen(tag);
+                size_t m = strlen(sn);
+                size_t n = strlen(tag);
                 if (pTemplate[i].pValue != NULL) {
                     if (pTemplate[i].ulValueLen >= m + n) {
                         memcpy(pTemplate[i].pValue, sn, m); /*not null terminated*/
-                        sprintf(tag,"(%02d)",object->id);
+                        sprintf(tag,"(%02lu)",object->id);
                         memcpy(pTemplate[i].pValue+m, tag, n);
                         debug(DEBUG_VERBOSE,"    %s%s\n",sn,tag);
                     } else {
@@ -1643,18 +1552,6 @@ setString(char *in, char *out, int len)
     memcpy(out, in, MIN(strlen(in),len) );
 }
 
-char *
-basename(const char *input)
-{
-    const char *base;
-    for(base = input; *input; input++) {
-        if( (*input) == '/' ) {
-            base = input + 1;
-        }
-    }
-    return (char *) base;
-}
-
 void
 setDateFromASN1Time(const ASN1_TIME *aTime, char *out)
 {
@@ -1725,9 +1622,7 @@ pMechanismToCSSM_ALGID(CK_MECHANISM_PTR pMechanism){
 		case CKM_SSL3_SHA1_MAC:
 			return CSSM_ALGID_SSL3SHA1_MAC;
 
-
-
-            /* Supported by PKCS, but no equiv in CSSM */
+        /* Supported by PKCS, but no equiv in CSSM */
 		case CKM_RC2_MAC_GENERAL:
 		case CKM_RC5_MAC_GENERAL:
 		case CKM_AES_MAC_GENERAL:
@@ -1765,8 +1660,6 @@ pMechanismToCSSM_ALGID(CK_MECHANISM_PTR pMechanism){
 		case CKM_SHA512_RSA_PKCS_PSS:
 		case CKM_SHA1_RSA_X9_31:
 		case CKM_FORTEZZA_TIMESTAMP:
-		case CKM_CMS_SIG:
-
 			return CKR_MECHANISM_PARAM_INVALID;
 
 		default:

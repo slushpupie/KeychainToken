@@ -1,8 +1,8 @@
 /*
- *  dump_info.h
+ *  debug.h
  *  KeychainToken
  *
- *  Created by Jay Kline on 7/7/09.
+ *  Created by Jay Kline on 7/1/09.
  *  Copyright 2009,2016
  *
  * This library is free software; you can redistribute it and/or
@@ -19,36 +19,34 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#ifndef _DEBUG_H_
+#define _DEBUG_H_
 
-#ifndef _DUMP_INFO_H
-#define _DUMP_INFO_H_
+#include "pkcs11.h"
 
-#include <stdio.h>
+#include <MacTypes.h>
 #include <stdlib.h>
 #include <string.h>
-#include "mypkcs11.h"
-#include "debug.h"
 
-#ifndef _WIN32
-#include <termios.h>
-#include <dlfcn.h>
-#define GetFuncFromMod dlsym
-#define CloseMod dlclose
-typedef void *LpHandleType;
-#else
-#include <io.h>
-#define GetFuncFromMod GetProcAddress
-#define CloseMod FreeLibrary
-typedef HINSTANCE LpHandleType;
+#define DEBUG_CRITICAL  1
+#define DEBUG_WARNING   2
+#define DEBUG_IMPORTANT 3
+#define DEBUG_INFO      4
+#define DEBUG_VERBOSE   5
+
+#ifndef DEBUG_LEVEL
+#define DEBUG_LEVEL DEBUG_CRITICAL
 #endif
 
+void debug(int level, const char* format, ...);
 
-void hexdump(unsigned char *, int);
-CK_RV get_slot(CK_FUNCTION_LIST_PTR, CK_SLOT_ID_PTR);
-CK_RV login(CK_FUNCTION_LIST_PTR, CK_SESSION_HANDLE, int, CK_UTF8CHAR *, CK_ULONG);
-CK_RV load_library(char *, CK_FUNCTION_LIST_PTR *);
-char *unhex(char *input, CK_ULONG *length);
-CK_RV getPassword(CK_UTF8CHAR *pass, CK_ULONG *length);
-
+const char * getCKRName(CK_RV rv);
+const char * getCKAName(CK_ATTRIBUTE_TYPE attrib);
+const char * getCKOName(CK_OBJECT_CLASS class);
+const char * getCKMName(CK_MECHANISM_TYPE mech);
+const char * getCKCName(CK_CERTIFICATE_TYPE ctype);
+const char * getSecErrorName(OSStatus status);
+char *hexify(unsigned char *data, unsigned long len);
+char *stringify(unsigned char *str, unsigned long length);
 
 #endif

@@ -19,8 +19,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 #include "keychain_pkcs11.h"
+
+#include <libgen.h>
+#include "preferences.h"
+#include "support_funcs.h"
 
 #define CHECK_SLOTID(id) if ( ((id) < 0) || ((id) > MAX_SLOTS - 1) ) return CKR_SLOT_ID_INVALID
 
@@ -195,8 +198,7 @@ getSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pSlotInfo)
 
         pSlotInfo->flags |= CKF_TOKEN_PRESENT;
 
-        keychainName = malloc(MAX_KEYCHAIN_PATH_LEN);
-        memset(keychainName, 0, sizeof(keychainName));
+        keychainName = calloc(MAX_KEYCHAIN_PATH_LEN, sizeof(char));
         len = MAX_KEYCHAIN_PATH_LEN - 1;
         status = SecKeychainGetPath(keychainSlots[slotID], &len, keychainName);
         if (status != 0) {
@@ -308,17 +310,9 @@ waitForSlotEvent(CK_FLAGS flags, CK_SLOT_ID_PTR pSlot, CK_VOID_PTR pReserved)
     /* Since these are not tokens in the traditional sense, they cannot be inserted/removed
      * from a slot.  Thus, if CKF_DONT_BLOCK is called, all we do is return. Otherwise,
      * We are supposed to wait for a token insert/removal event that will never happen; so
-     * we essentially block forever. :-(
+     * we just return there too.
      */
-    if(flags & CKF_DONT_BLOCK) {
-        return CKR_NO_EVENT;
-    } else {
-        /* while(initialized) { sleep(1000); } */
-        return CKR_NO_EVENT;
-    }
-
-    debug(DEBUG_CRITICAL,"function not implemented\n");
-    return CKR_GENERAL_ERROR;
+    return CKR_NO_EVENT;
 }
 
 CK_RV
@@ -368,8 +362,8 @@ getMechanismInfo(CK_SLOT_ID slotID, CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PT
     for(i = 0; i < numMechanisms; i++) {
         if (mechanismList[i].mech == type) {
             *pInfo = mechanismList[i].info;
+            return CKR_OK;
         }
-        return CKR_OK;
     }
     return CKR_MECHANISM_INVALID;
 }
@@ -514,7 +508,7 @@ getSessionInfo(CK_SESSION_HANDLE hSession, CK_SESSION_INFO_PTR pInfo)
 }
 
 CK_RV
-login(CK_SESSION_HANDLE hSession, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen)
+doLogin(CK_SESSION_HANDLE hSession, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen)
 {
     OSStatus status = 0;
     sessionEntry *session;
@@ -574,7 +568,7 @@ login(CK_SESSION_HANDLE hSession, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, C
 }
 
 CK_RV
-logout(CK_SESSION_HANDLE hSession)
+doLogout(CK_SESSION_HANDLE hSession)
 {
     sessionEntry *session;
     OSStatus status;
@@ -660,7 +654,6 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
     SecKeychainItemRef itemRef = NULL;
     SecItemClass itemClass = 0;
     SecKeychainAttributeList *attrList = NULL;
-    CK_RV rv = CKR_OK;
     int count = 0;
 
 
@@ -1239,7 +1232,7 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
                                     data.Data = tmp;
                                 } else if(cur->class == CKO_PUBLIC_KEY) {
                                     unsigned char* tmp;
-                                    data.Length = i2d_X509(cur->storage.publicKey.pubKey, NULL);
+                                    data.Length = i2d_PUBKEY(cur->storage.publicKey.pubKey, NULL);
                                     data.Data = malloc(data.Length);
                                     tmp = data.Data;
                                     i2d_X509(cur->storage.certificate.x509, &tmp);
@@ -1299,10 +1292,6 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
                     debug(DEBUG_VERBOSE,"(todo)\n");
                     break;
 
-
-
-
-
                 default:
                     debug(DEBUG_INFO,"Requested unknown attribute: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
 
@@ -1334,10 +1323,6 @@ findObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, CK_ULONG 
     CK_ULONG i = 0;
 
     if(phObject == NULL) {
-        return CKR_ARGUMENTS_BAD;
-    }
-
-    if ( ulMaxObjectCount < 0 ) {
         return CKR_ARGUMENTS_BAD;
     }
 
@@ -1483,7 +1468,7 @@ c_encrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_
 {
     sessionEntry *session = NULL;
     CSSM_DATA plainText, cipherText, extra;
-    UInt32 bytesEncrypted = 0;
+    CSSM_SIZE bytesEncrypted = 0;
     CSSM_RETURN status = 0;
     CK_RV ret = CKR_OK;
 
@@ -1634,7 +1619,7 @@ decrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BY
 {
     sessionEntry *session = NULL;
     CSSM_DATA input, output, extra;
-    UInt32 bytesDecrypted = 0;
+    CSSM_SIZE bytesDecrypted = 0;
     CSSM_RETURN status = 0;
     CK_RV ret = CKR_OK;
 
@@ -2034,7 +2019,7 @@ c_verify(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_B
         }
     }
     CSSM_DeleteContext(session->verifyContext);
-    session->verifyContext;
+    session->verifyContext = 0;
 
 	return ret;
 }

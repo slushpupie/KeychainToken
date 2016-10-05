@@ -19,12 +19,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
-
 #include "debug.h"
 
+#include <Security/Security.h>
 
-char *hexify(unsigned char *data, int len) {
+char *hexify(unsigned char *data, unsigned long len) {
     char *s;
     int i;
     char hexDigits[] = { '0', '1', '2', '3', '4', '5', '6', '7',
@@ -41,7 +40,7 @@ char *hexify(unsigned char *data, int len) {
     return(s);
 }
 
-char *stringify(unsigned char *str, int length) {
+char *stringify(unsigned char *str, unsigned long length) {
     static char my_string[128];
 
     if (length >= 128) return(NULL);
@@ -83,8 +82,6 @@ const char * getCKMName(CK_MECHANISM_TYPE mech) {
         case CKM_SHA256_RSA_PKCS_PSS: return "CKM_SHA256_RSA_PKCS_PSS";
         case CKM_SHA384_RSA_PKCS_PSS: return "CKM_SHA384_RSA_PKCS_PSS";
         case CKM_SHA512_RSA_PKCS_PSS: return "CKM_SHA512_RSA_PKCS_PSS";
-        case CKM_SHA224_RSA_PKCS: return "CKM_SHA224_RSA_PKCS";
-        case CKM_SHA224_RSA_PKCS_PSS: return "CKM_SHA224_RSA_PKCS_PSS";
         case CKM_RC2_KEY_GEN: return "CKM_RC2_KEY_GEN";
         case CKM_RC2_ECB: return "CKM_RC2_ECB";
         case CKM_RC2_CBC: return "CKM_RC2_CBC";
@@ -112,10 +109,6 @@ const char * getCKMName(CK_MECHANISM_TYPE mech) {
         case CKM_CDMF_MAC: return "CKM_CDMF_MAC";
         case CKM_CDMF_MAC_GENERAL: return "CKM_CDMF_MAC_GENERAL";
         case CKM_CDMF_CBC_PAD: return "CKM_CDMF_CBC_PAD";
-        case CKM_DES_OFB64: return "CKM_DES_OFB64";
-        case CKM_DES_OFB8: return "CKM_DES_OFB8";
-        case CKM_DES_CFB64: return "CKM_DES_CFB64";
-        case CKM_DES_CFB8: return "CKM_DES_CFB8";
         case CKM_MD2: return "CKM_MD2";
         case CKM_MD2_HMAC: return "CKM_MD2_HMAC";
         case CKM_MD2_HMAC_GENERAL: return "CKM_MD2_HMAC_GENERAL";
@@ -134,21 +127,12 @@ const char * getCKMName(CK_MECHANISM_TYPE mech) {
         case CKM_SHA256: return "CKM_SHA256";
         case CKM_SHA256_HMAC: return "CKM_SHA256_HMAC";
         case CKM_SHA256_HMAC_GENERAL: return "CKM_SHA256_HMAC_GENERAL";
-        case CKM_SHA224: return "CKM_SHA224";
-        case CKM_SHA224_HMAC: return "CKM_SHA224_HMAC";
-        case CKM_SHA224_HMAC_GENERAL: return "CKM_SHA224_HMAC_GENERAL";
         case CKM_SHA384: return "CKM_SHA384";
         case CKM_SHA384_HMAC: return "CKM_SHA384_HMAC";
         case CKM_SHA384_HMAC_GENERAL: return "CKM_SHA384_HMAC_GENERAL";
         case CKM_SHA512: return "CKM_SHA512";
         case CKM_SHA512_HMAC: return "CKM_SHA512_HMAC";
         case CKM_SHA512_HMAC_GENERAL: return "CKM_SHA512_HMAC_GENERAL";
-        case CKM_SECURID_KEY_GEN: return "CKM_SECURID_KEY_GEN";
-        case CKM_SECURID: return "CKM_SECURID";
-        case CKM_HOTP_KEY_GEN: return "CKM_HOTP_KEY_GEN";
-        case CKM_HOTP: return "CKM_HOTP";
-        case CKM_ACTI: return "CKM_ACTI";
-        case CKM_ACTI_KEY_GEN: return "CKM_ACTI_KEY_GEN";
         case CKM_CAST_KEY_GEN: return "CKM_CAST_KEY_GEN";
         case CKM_CAST_ECB: return "CKM_CAST_ECB";
         case CKM_CAST_CBC: return "CKM_CAST_CBC";
@@ -193,16 +177,11 @@ const char * getCKMName(CK_MECHANISM_TYPE mech) {
         case CKM_TLS_MASTER_KEY_DERIVE: return "CKM_TLS_MASTER_KEY_DERIVE";
         case CKM_TLS_KEY_AND_MAC_DERIVE: return "CKM_TLS_KEY_AND_MAC_DERIVE";
         case CKM_TLS_MASTER_KEY_DERIVE_DH: return "CKM_TLS_MASTER_KEY_DERIVE_DH";
-        case CKM_TLS_PRF: return "CKM_TLS_PRF";
         case CKM_SSL3_MD5_MAC: return "CKM_SSL3_MD5_MAC";
         case CKM_SSL3_SHA1_MAC: return "CKM_SSL3_SHA1_MAC";
         case CKM_MD5_KEY_DERIVATION: return "CKM_MD5_KEY_DERIVATION";
         case CKM_MD2_KEY_DERIVATION: return "CKM_MD2_KEY_DERIVATION";
         case CKM_SHA1_KEY_DERIVATION: return "CKM_SHA1_KEY_DERIVATION";
-        case CKM_SHA256_KEY_DERIVATION: return "CKM_SHA256_KEY_DERIVATION";
-        case CKM_SHA384_KEY_DERIVATION: return "CKM_SHA384_KEY_DERIVATION";
-        case CKM_SHA512_KEY_DERIVATION: return "CKM_SHA512_KEY_DERIVATION";
-        case CKM_SHA224_KEY_DERIVATION: return "CKM_SHA224_KEY_DERIVATION";
         case CKM_PBE_MD2_DES_CBC: return "CKM_PBE_MD2_DES_CBC";
         case CKM_PBE_MD5_DES_CBC: return "CKM_PBE_MD5_DES_CBC";
         case CKM_PBE_MD5_CAST_CBC: return "CKM_PBE_MD5_CAST_CBC";
@@ -217,35 +196,8 @@ const char * getCKMName(CK_MECHANISM_TYPE mech) {
         case CKM_PBE_SHA1_RC2_40_CBC: return "CKM_PBE_SHA1_RC2_40_CBC";
         case CKM_PKCS5_PBKD2: return "CKM_PKCS5_PBKD2";
         case CKM_PBA_SHA1_WITH_SHA1_HMAC: return "CKM_PBA_SHA1_WITH_SHA1_HMAC";
-        case CKM_WTLS_PRE_MASTER_KEY_GEN: return "CKM_WTLS_PRE_MASTER_KEY_GEN";
-        case CKM_WTLS_MASTER_KEY_DERIVE: return "CKM_WTLS_MASTER_KEY_DERIVE";
-        case CKM_WTLS_MASTER_KEY_DERIVE_DH_ECC: return "CKM_WTLS_MASTER_KEY_DERIVE_DH_ECC";
-        case CKM_WTLS_PRF: return "CKM_WTLS_PRF";
-        case CKM_WTLS_SERVER_KEY_AND_MAC_DERIVE: return "CKM_WTLS_SERVER_KEY_AND_MAC_DERIVE";
-        case CKM_WTLS_CLIENT_KEY_AND_MAC_DERIVE: return "CKM_WTLS_CLIENT_KEY_AND_MAC_DERIVE";
         case CKM_KEY_WRAP_LYNKS: return "CKM_KEY_WRAP_LYNKS";
         case CKM_KEY_WRAP_SET_OAEP: return "CKM_KEY_WRAP_SET_OAEP";
-        case CKM_CMS_SIG: return "CKM_CMS_SIG";
-        case CKM_KIP_DERIVE	: return "CKM_KIP_DERIVE	";
-        case CKM_KIP_WRAP	: return "CKM_KIP_WRAP	";
-        case CKM_KIP_MAC	: return "CKM_KIP_MAC	";
-        case CKM_CAMELLIA_KEY_GEN: return "CKM_CAMELLIA_KEY_GEN";
-        case CKM_CAMELLIA_ECB: return "CKM_CAMELLIA_ECB";
-        case CKM_CAMELLIA_CBC: return "CKM_CAMELLIA_CBC";
-        case CKM_CAMELLIA_MAC: return "CKM_CAMELLIA_MAC";
-        case CKM_CAMELLIA_MAC_GENERAL: return "CKM_CAMELLIA_MAC_GENERAL";
-        case CKM_CAMELLIA_CBC_PAD: return "CKM_CAMELLIA_CBC_PAD";
-        case CKM_CAMELLIA_ECB_ENCRYPT_DATA: return "CKM_CAMELLIA_ECB_ENCRYPT_DATA";
-        case CKM_CAMELLIA_CBC_ENCRYPT_DATA: return "CKM_CAMELLIA_CBC_ENCRYPT_DATA";
-        case CKM_CAMELLIA_CTR: return "CKM_CAMELLIA_CTR";
-        case CKM_ARIA_KEY_GEN: return "CKM_ARIA_KEY_GEN";
-        case CKM_ARIA_ECB: return "CKM_ARIA_ECB";
-        case CKM_ARIA_CBC: return "CKM_ARIA_CBC";
-        case CKM_ARIA_MAC: return "CKM_ARIA_MAC";
-        case CKM_ARIA_MAC_GENERAL: return "CKM_ARIA_MAC_GENERAL";
-        case CKM_ARIA_CBC_PAD: return "CKM_ARIA_CBC_PAD";
-        case CKM_ARIA_ECB_ENCRYPT_DATA: return "CKM_ARIA_ECB_ENCRYPT_DATA";
-        case CKM_ARIA_CBC_ENCRYPT_DATA: return "CKM_ARIA_CBC_ENCRYPT_DATA";
         case CKM_SKIPJACK_KEY_GEN: return "CKM_SKIPJACK_KEY_GEN";
         case CKM_SKIPJACK_ECB64: return "CKM_SKIPJACK_ECB64";
         case CKM_SKIPJACK_CBC64: return "CKM_SKIPJACK_CBC64";
@@ -286,41 +238,13 @@ const char * getCKMName(CK_MECHANISM_TYPE mech) {
         case CKM_AES_MAC: return "CKM_AES_MAC";
         case CKM_AES_MAC_GENERAL: return "CKM_AES_MAC_GENERAL";
         case CKM_AES_CBC_PAD: return "CKM_AES_CBC_PAD";
-        case CKM_AES_CTR: return "CKM_AES_CTR";
-        case CKM_BLOWFISH_KEY_GEN: return "CKM_BLOWFISH_KEY_GEN";
-        case CKM_BLOWFISH_CBC: return "CKM_BLOWFISH_CBC";
-        case CKM_TWOFISH_KEY_GEN: return "CKM_TWOFISH_KEY_GEN";
-        case CKM_TWOFISH_CBC: return "CKM_TWOFISH_CBC";
-        case CKM_DES_ECB_ENCRYPT_DATA: return "CKM_DES_ECB_ENCRYPT_DATA";
-        case CKM_DES_CBC_ENCRYPT_DATA: return "CKM_DES_CBC_ENCRYPT_DATA";
-        case CKM_DES3_ECB_ENCRYPT_DATA: return "CKM_DES3_ECB_ENCRYPT_DATA";
-        case CKM_DES3_CBC_ENCRYPT_DATA: return "CKM_DES3_CBC_ENCRYPT_DATA";
-        case CKM_AES_ECB_ENCRYPT_DATA: return "CKM_AES_ECB_ENCRYPT_DATA";
-        case CKM_AES_CBC_ENCRYPT_DATA: return "CKM_AES_CBC_ENCRYPT_DATA";
         case CKM_DSA_PARAMETER_GEN: return "CKM_DSA_PARAMETER_GEN";
         case CKM_DH_PKCS_PARAMETER_GEN: return "CKM_DH_PKCS_PARAMETER_GEN";
         case CKM_X9_42_DH_PARAMETER_GEN: return "CKM_X9_42_DH_PARAMETER_GEN";
         case CKM_VENDOR_DEFINED: return "CKM_VENDOR_DEFINED";
-            /** Netscape Specific **/
-        case CKM_FAKE_RANDOM: return "CKM_FAKE_RANDOM";
-        case CKM_INVALID_MECHANISM: return "CKM_INVALID_MECHANISM";
-        case CKM_NSS: return "CKM_NSS";
-        case CKM_NSS_AES_KEY_WRAP: return "CKM_NSS_AES_KEY_WRAP";
-        case CKM_NSS_AES_KEY_WRAP_PAD: return "CKM_NSS_AES_KEY_WRAP_PAD";
-        case CKM_NETSCAPE_PBE_SHA1_DES_CBC: return "CKM_NETSCAPE_PBE_SHA1_DES_CBC";
-        case CKM_NETSCAPE_PBE_SHA1_TRIPLE_DES_CBC: return "CKM_NETSCAPE_PBE_SHA1_TRIPLE_DES_CBC";
-        case CKM_NETSCAPE_PBE_SHA1_40_BIT_RC2_CBC: return "CKM_NETSCAPE_PBE_SHA1_40_BIT_RC2_CBC";
-        case CKM_NETSCAPE_PBE_SHA1_128_BIT_RC2_CBC: return "CKM_NETSCAPE_PBE_SHA1_128_BIT_RC2_CBC";
-        case CKM_NETSCAPE_PBE_SHA1_40_BIT_RC4: return "CKM_NETSCAPE_PBE_SHA1_40_BIT_RC4";
-        case CKM_NETSCAPE_PBE_SHA1_128_BIT_RC4: return "CKM_NETSCAPE_PBE_SHA1_128_BIT_RC4";
-        case CKM_NETSCAPE_PBE_SHA1_FAULTY_3DES_CBC: return "CKM_NETSCAPE_PBE_SHA1_FAULTY_3DES_CBC";
-        case CKM_NETSCAPE_PBE_SHA1_HMAC_KEY_GEN: return "CKM_NETSCAPE_PBE_SHA1_HMAC_KEY_GEN";
-        case CKM_NETSCAPE_PBE_MD5_HMAC_KEY_GEN: return "CKM_NETSCAPE_PBE_MD5_HMAC_KEY_GEN";
-        case CKM_NETSCAPE_PBE_MD2_HMAC_KEY_GEN: return "CKM_NETSCAPE_PBE_MD2_HMAC_KEY_GEN";
-        case CKM_TLS_PRF_GENERAL: return "CKM_TLS_PRF_GENERAL";
 
         default:
-            return "";
+            return "__CKM_UNKNOWN__";
     }
 }
 
@@ -374,7 +298,6 @@ const char * getCKAName(CK_ATTRIBUTE_TYPE attrib) {
         case CKA_SUBPRIME: return "CKA_SUBPRIME";
         case CKA_BASE: return "CKA_BASE";
         case CKA_PRIME_BITS: return "CKA_PRIME_BITS";
-        case CKA_SUBPRIME_BITS: return "CKA_SUBPRIME_BITS";
         case CKA_VALUE_BITS: return "CKA_VALUE_BITS";
         case CKA_VALUE_LEN: return "CKA_VALUE_LEN";
         case CKA_EXTRACTABLE: return "CKA_EXTRACTABLE";
@@ -391,20 +314,6 @@ const char * getCKAName(CK_ATTRIBUTE_TYPE attrib) {
         case CKA_WRAP_WITH_TRUSTED: return "CKA_WRAP_WITH_TRUSTED";
         case CKA_WRAP_TEMPLATE: return "CKA_WRAP_TEMPLATE";
         case CKA_UNWRAP_TEMPLATE: return "CKA_UNWRAP_TEMPLATE";
-        case CKA_OTP_FORMAT: return "CKA_OTP_FORMAT";
-        case CKA_OTP_LENGTH: return "CKA_OTP_LENGTH";
-        case CKA_OTP_TIME_INTERVAL: return "CKA_OTP_TIME_INTERVAL";
-        case CKA_OTP_USER_FRIENDLY_MODE: return "CKA_OTP_USER_FRIENDLY_MODE";
-        case CKA_OTP_CHALLENGE_REQUIREMENT: return "CKA_OTP_CHALLENGE_REQUIREMENT";
-        case CKA_OTP_TIME_REQUIREMENT: return "CKA_OTP_TIME_REQUIREMENT";
-        case CKA_OTP_COUNTER_REQUIREMENT: return "CKA_OTP_COUNTER_REQUIREMENT";
-        case CKA_OTP_PIN_REQUIREMENT: return "CKA_OTP_PIN_REQUIREMENT";
-        case CKA_OTP_COUNTER: return "CKA_OTP_COUNTER";
-        case CKA_OTP_TIME: return "CKA_OTP_TIME";
-        case CKA_OTP_USER_IDENTIFIER: return "CKA_OTP_USER_IDENTIFIER";
-        case CKA_OTP_SERVICE_IDENTIFIER: return "CKA_OTP_SERVICE_IDENTIFIER";
-        case CKA_OTP_SERVICE_LOGO: return "CKA_OTP_SERVICE_LOGO";
-        case CKA_OTP_SERVICE_LOGO_TYPE: return "CKA_OTP_SERVICE_LOGO_TYPE";
         case CKA_HW_FEATURE_TYPE: return "CKA_HW_FEATURE_TYPE";
         case CKA_RESET_ON_INIT: return "CKA_RESET_ON_INIT";
         case CKA_HAS_RESET: return "CKA_HAS_RESET";
@@ -424,47 +333,9 @@ const char * getCKAName(CK_ATTRIBUTE_TYPE attrib) {
         case CKA_SUPPORTED_CMS_ATTRIBUTES: return "CKA_SUPPORTED_CMS_ATTRIBUTES";
         case CKA_ALLOWED_MECHANISMS: return "CKA_ALLOWED_MECHANISMS";
         case CKA_VENDOR_DEFINED: return "CKA_VENDOR_DEFINED";
-            /** Netscape Specific **/
-        case CKA_DIGEST: return "CKA_DIGEST";
-        case CKA_NSS: return "CKA_NSS";
-        case CKA_NSS_URL: return "CKA_NSS_URL";
-        case CKA_NSS_EMAIL: return "CKA_NSS_EMAIL";
-        case CKA_NSS_SMIME_INFO: return "CKA_NSS_SMIME_INFO";
-        case CKA_NSS_SMIME_TIMESTAMP: return "CKA_NSS_SMIME_TIMESTAMP";
-        case CKA_NSS_PKCS8_SALT: return "CKA_NSS_PKCS8_SALT";
-        case CKA_NSS_PASSWORD_CHECK: return "CKA_NSS_PASSWORD_CHECK";
-        case CKA_NSS_EXPIRES: return "CKA_NSS_EXPIRES";
-        case CKA_NSS_KRL: return "CKA_NSS_KRL";
-        case CKA_NSS_PQG_COUNTER: return "CKA_NSS_PQG_COUNTER";
-        case CKA_NSS_PQG_SEED: return "CKA_NSS_PQG_SEED";
-        case CKA_NSS_PQG_H: return "CKA_NSS_PQG_H";
-        case CKA_NSS_PQG_SEED_BITS: return "CKA_NSS_PQG_SEED_BITS";
-        case CKA_NSS_MODULE_SPEC: return "CKA_NSS_MODULE_SPEC";
-        case CKA_NSS_OVERRIDE_EXTENSIONS: return "CKA_NSS_OVERRIDE_EXTENSIONS";
-        case CKA_TRUST: return "CKA_TRUST";
-        case CKA_TRUST_DIGITAL_SIGNATURE: return "CKA_TRUST_DIGITAL_SIGNATURE";
-        case CKA_TRUST_NON_REPUDIATION: return "CKA_TRUST_NON_REPUDIATION";
-        case CKA_TRUST_KEY_ENCIPHERMENT: return "CKA_TRUST_KEY_ENCIPHERMENT";
-        case CKA_TRUST_DATA_ENCIPHERMENT: return "CKA_TRUST_DATA_ENCIPHERMENT";
-        case CKA_TRUST_KEY_AGREEMENT: return "CKA_TRUST_KEY_AGREEMENT";
-        case CKA_TRUST_KEY_CERT_SIGN: return "CKA_TRUST_KEY_CERT_SIGN";
-        case CKA_TRUST_CRL_SIGN: return "CKA_TRUST_CRL_SIGN";
-        case CKA_TRUST_SERVER_AUTH: return "CKA_TRUST_SERVER_AUTH";
-        case CKA_TRUST_CLIENT_AUTH: return "CKA_TRUST_CLIENT_AUTH";
-        case CKA_TRUST_CODE_SIGNING: return "CKA_TRUST_CODE_SIGNING";
-        case CKA_TRUST_EMAIL_PROTECTION: return "CKA_TRUST_EMAIL_PROTECTION";
-        case CKA_TRUST_IPSEC_END_SYSTEM: return "CKA_TRUST_IPSEC_END_SYSTEM";
-        case CKA_TRUST_IPSEC_TUNNEL: return "CKA_TRUST_IPSEC_TUNNEL";
-        case CKA_TRUST_IPSEC_USER: return "CKA_TRUST_IPSEC_USER";
-        case CKA_TRUST_TIME_STAMPING: return "CKA_TRUST_TIME_STAMPING";
-        case CKA_TRUST_STEP_UP_APPROVED: return "CKA_TRUST_STEP_UP_APPROVED";
-        case CKA_CERT_SHA1_HASH: return "CKA_CERT_SHA1_HASH";
-        case CKA_CERT_MD5_HASH: return "CKA_CERT_MD5_HASH";
-        case CKA_NETSCAPE_DB: return "CKA_NETSCAPE_DB";
-        case CKA_NETSCAPE_TRUST: return "CKA_NETSCAPE_TRUST";
 
         default:
-            return "";
+            return "__CKA_UNKNOWN__";
     }
 }
 
@@ -478,19 +349,10 @@ const char * getCKOName(CK_OBJECT_CLASS class) {
         case CKO_HW_FEATURE: return "CKO_HW_FEATURE";
         case CKO_DOMAIN_PARAMETERS: return "CKO_DOMAIN_PARAMETERS";
         case CKO_MECHANISM: return "CKO_MECHANISM";
-        case CKO_OTP_KEY: return "CKO_OTP_KEY";
         case CKO_VENDOR_DEFINED: return "CKO_VENDOR_DEFINED";
-            /** Netscape Specific **/
-        case CKO_NSS: return "CKO_NSS";
-        case CKO_NSS_CRL: return "CKO_NSS_CRL";
-        case CKO_NSS_SMIME: return "CKO_NSS_SMIME";
-        case CKO_NSS_TRUST: return "CKO_NSS_TRUST";
-        case CKO_NSS_BUILTIN_ROOT_LIST: return "CKO_NSS_BUILTIN_ROOT_LIST";
-        case CKO_NSS_NEWSLOT: return "CKO_NSS_NEWSLOT";
-        case CKO_NSS_DELSLOT: return "CKO_NSS_DELSLOT";
 
         default:
-            return "";
+            return "__CKO_UNKNOWN__";
     }
 }
 
@@ -580,17 +442,11 @@ const char * getCKRName(CK_RV rv) {
         case CKR_CRYPTOKI_ALREADY_INITIALIZED: return "CKR_CRYPTOKI_ALREADY_INITIALIZED";
         case CKR_MUTEX_BAD: return "CKR_MUTEX_BAD";
         case CKR_MUTEX_NOT_LOCKED: return "CKR_MUTEX_NOT_LOCKED";
-        case CKR_NEW_PIN_MODE: return "CKR_NEW_PIN_MODE";
-        case CKR_NEXT_OTP: return "CKR_NEXT_OTP";
         case CKR_FUNCTION_REJECTED: return "CKR_FUNCTION_REJECTED";
         case CKR_VENDOR_DEFINED: return "CKR_VENDOR_DEFINED";
-           /** Netscape Specific **/
-        case CKR_NSS: return "CKR_NSS";
-        case CKR_NSS_CERTDB_FAILED: return "CKR_NSS_CERTDB_FAILED";
-        case CKR_NSS_KEYDB_FAILED: return "CKR_NSS_KEYDB_FAILED";
 
         default:
-            return "";
+            return "__CKR_UNKNOWN__";
     }
 }
 
@@ -601,10 +457,9 @@ const char * getCKCName(CK_CERTIFICATE_TYPE ctype) {
         case CKC_X_509_ATTR_CERT: return "CKC_X_509_ATTR_CERT";
         case CKC_WTLS: return "CKC_WTLS";
         case CKC_VENDOR_DEFINED: return "CKC_VENDOR_DEFINED";
-           /** Netscap Specific **/
-        case CKC_NSS: return "CKC_NSS";
+
         default:
-            return "";
+            return "__CKC_UNKNOWN__";
     }
 }
 
@@ -656,7 +511,7 @@ const char * getSecErrorName(OSStatus status) {
         case errSecInvalidTrustSettings: return "errSecInvalidTrustSettings ";
         case errSecNoTrustSettings: return "errSecNoTrustSettings";
         case errSecPkcs12VerifyFailure: return "errSecPkcs12VerifyFailure ";
-        default: return "";
+        default: return "__errSecUnknown__";
     }
 }
 

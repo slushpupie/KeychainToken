@@ -1,0 +1,3 @@
+The header file in this directory is the pkcs11.h from the scute distribution (version 1.4).  It appears that p11-kit
+and others use this same (or a minor variant) of it for their code, so it is used for maximum compatiblity with 
+those projects.  The file is intended to be a drop-in replacement for the RSA pkcs11.h header (and friends).

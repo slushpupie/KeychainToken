@@ -309,7 +309,6 @@ freeObject(objectEntry *object)
         case CKO_HW_FEATURE:
         case CKO_DOMAIN_PARAMETERS:
         case CKO_MECHANISM:
-        case CKO_OTP_KEY:
             break;
 
     }
@@ -1128,13 +1127,6 @@ getAttributeValueCertificate(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK
                     rv = CKR_ATTRIBUTE_TYPE_INVALID;
                 }
 
-            case CKA_NSS_EMAIL:
-                debug(DEBUG_VERBOSE,"  CKA_NSS_EMAIL\n");
-                /* Not supported */
-                pTemplate[i].ulValueLen = -1;
-                rv = CKR_ATTRIBUTE_TYPE_INVALID;
-                break;
-
             default:
                 debug(DEBUG_VERBOSE,"Unknown CKO_CERTIFICATE attribute requested: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));
                 rv = CKR_ATTRIBUTE_TYPE_INVALID;
@@ -1765,8 +1757,6 @@ pMechanismToCSSM_ALGID(CK_MECHANISM_PTR pMechanism){
 		case CKM_SHA512_RSA_PKCS_PSS:
 		case CKM_SHA1_RSA_X9_31:
 		case CKM_FORTEZZA_TIMESTAMP:
-		case CKM_CMS_SIG:
-
 			return CKR_MECHANISM_PARAM_INVALID;
 
 		default:

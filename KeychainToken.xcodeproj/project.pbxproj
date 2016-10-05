@@ -12,12 +12,8 @@
 		6924E80E0FFC0A9A00907808 /* debug.c in Sources */ = {isa = PBXBuildFile; fileRef = 6924E80B0FFC0A9A00907808 /* debug.c */; };
 		697EEACF100397560063C91C /* support_funcs.c in Sources */ = {isa = PBXBuildFile; fileRef = 697EEACD100397560063C91C /* support_funcs.c */; };
 		697EEAD410039A880063C91C /* types.h in Headers */ = {isa = PBXBuildFile; fileRef = 697EEAD310039A880063C91C /* types.h */; };
-		6983BC060FF14BDA00FED01D /* pkcs11.h in Headers */ = {isa = PBXBuildFile; fileRef = 6983BC050FF14BDA00FED01D /* pkcs11.h */; };
-		6983BC080FF14C6C00FED01D /* pkcs11f.h in Headers */ = {isa = PBXBuildFile; fileRef = 6983BC070FF14C6C00FED01D /* pkcs11f.h */; };
-		6983BCB90FF14C9500FED01D /* pkcs11t.h in Headers */ = {isa = PBXBuildFile; fileRef = 6983BCB80FF14C9500FED01D /* pkcs11t.h */; };
 		6983BDC80FF2768100FED01D /* keychain_pkcs11.c in Sources */ = {isa = PBXBuildFile; fileRef = 6983BB7C0FF008B100FED01D /* keychain_pkcs11.c */; };
 		6983BDDA0FF2771D00FED01D /* pkcs11_test.c in Sources */ = {isa = PBXBuildFile; fileRef = 6983BDD20FF276EF00FED01D /* pkcs11_test.c */; };
-		69AA6EFC100B83C8004FAA10 /* pkcs11n.h in Headers */ = {isa = PBXBuildFile; fileRef = 69AA6EFB100B83C8004FAA10 /* pkcs11n.h */; };
 		883BD2CE1DA57F4600051423 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 883BD2CD1DA57F4600051423 /* Security.framework */; };
 		883BD2D01DA57F5700051423 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 883BD2CF1DA57F5700051423 /* CoreFoundation.framework */; };
 		883BD2D21DA57FDB00051423 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 883BD2D11DA57FDB00051423 /* CoreServices.framework */; };
@@ -36,17 +32,14 @@
 		6983BB7B0FF008B100FED01D /* keychain_pkcs11.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = keychain_pkcs11.h; sourceTree = "<group>"; };
 		6983BB7C0FF008B100FED01D /* keychain_pkcs11.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = keychain_pkcs11.c; sourceTree = "<group>"; };
 		6983BB8A0FF14AEC00FED01D /* keychain_pkcs11.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = keychain_pkcs11.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
-		6983BC030FF14BA600FED01D /* mypkcs11.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = mypkcs11.h; sourceTree = "<group>"; };
-		6983BC050FF14BDA00FED01D /* pkcs11.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pkcs11.h; sourceTree = "<group>"; };
-		6983BC070FF14C6C00FED01D /* pkcs11f.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pkcs11f.h; sourceTree = "<group>"; };
-		6983BCB80FF14C9500FED01D /* pkcs11t.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pkcs11t.h; sourceTree = "<group>"; };
 		6983BDD10FF276EF00FED01D /* pkcs11_test.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pkcs11_test.h; sourceTree = "<group>"; };
 		6983BDD20FF276EF00FED01D /* pkcs11_test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = pkcs11_test.c; sourceTree = "<group>"; };
 		6983BDD60FF2770E00FED01D /* pkcs11_test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = pkcs11_test; sourceTree = BUILT_PRODUCTS_DIR; };
-		69AA6EFB100B83C8004FAA10 /* pkcs11n.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pkcs11n.h; sourceTree = "<group>"; };
 		883BD2CD1DA57F4600051423 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		883BD2CF1DA57F5700051423 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 		883BD2D11DA57FDB00051423 /* CoreServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreServices.framework; path = System/Library/Frameworks/CoreServices.framework; sourceTree = SDKROOT; };
+		88BBBA201DA584070080254D /* pkcs11.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pkcs11.h; sourceTree = "<group>"; };
+		88BBBA211DA584070080254D /* README */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -74,6 +67,7 @@
 			isa = PBXGroup;
 			children = (
 				692300C10FF55CDA0031A8B7 /* Frameworks */,
+				88BBBA1E1DA584070080254D /* 3rdParty */,
 				08FB7795FE84155DC02AAC07 /* Source */,
 				88613B871DA5815A00E8DD52 /* Test */,
 				1AB674ADFE9D54B511CA2CBB /* Products */,
@@ -87,10 +81,6 @@
 			children = (
 				6983BB7B0FF008B100FED01D /* keychain_pkcs11.h */,
 				6983BB7C0FF008B100FED01D /* keychain_pkcs11.c */,
-				6983BC030FF14BA600FED01D /* mypkcs11.h */,
-				6983BC050FF14BDA00FED01D /* pkcs11.h */,
-				6983BC070FF14C6C00FED01D /* pkcs11f.h */,
-				6983BCB80FF14C9500FED01D /* pkcs11t.h */,
 				6923007F0FF557160031A8B7 /* preferences.h */,
 				692300800FF557160031A8B7 /* preferences.c */,
 				6924E80A0FFC0A9A00907808 /* debug.h */,
@@ -99,7 +89,6 @@
 				697EEACD100397560063C91C /* support_funcs.c */,
 				697EEAD310039A880063C91C /* types.h */,
 				697EEADA10039CA20063C91C /* constants.h */,
-				69AA6EFB100B83C8004FAA10 /* pkcs11n.h */,
 			);
 			path = Source;
 			sourceTree = "<group>";
@@ -132,6 +121,23 @@
 			path = Test;
 			sourceTree = "<group>";
 		};
+		88BBBA1E1DA584070080254D /* 3rdParty */ = {
+			isa = PBXGroup;
+			children = (
+				88BBBA1F1DA584070080254D /* scute */,
+			);
+			path = 3rdParty;
+			sourceTree = "<group>";
+		};
+		88BBBA1F1DA584070080254D /* scute */ = {
+			isa = PBXGroup;
+			children = (
+				88BBBA201DA584070080254D /* pkcs11.h */,
+				88BBBA211DA584070080254D /* README */,
+			);
+			path = scute;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -139,11 +145,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				6983BC060FF14BDA00FED01D /* pkcs11.h in Headers */,
-				6983BC080FF14C6C00FED01D /* pkcs11f.h in Headers */,
-				6983BCB90FF14C9500FED01D /* pkcs11t.h in Headers */,
 				697EEAD410039A880063C91C /* types.h in Headers */,
-				69AA6EFC100B83C8004FAA10 /* pkcs11n.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

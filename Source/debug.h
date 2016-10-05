@@ -28,7 +28,7 @@
 
 #include <CoreFoundation/CoreFoundation.h>
 
-#include "mypkcs11.h"
+#include "pkcs11.h"
 
 
 

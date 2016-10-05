@@ -26,7 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "mypkcs11.h"
+#include "pkcs11.h"
 #include "debug.h"
 
 #ifndef _WIN32

@@ -302,8 +302,6 @@ int main(int argc, char *argv[]) {
                 fprintf(stderr, "CKO_DOMAIN_PARAMETERS\n"); break;
             case CKO_MECHANISM:
                 fprintf(stderr, "CKO_MECHANISM\n"); break;
-            case CKO_OTP_KEY:
-                fprintf(stderr, "CKO_OTP_KEY\n"); break;
             default:
                 fprintf(stderr,"\n");
         }

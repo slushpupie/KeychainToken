@@ -27,13 +27,13 @@
 #include <openssl/x509.h>
 #include <openssl/err.h>
 
-#include "mypkcs11.h"
+#include "pkcs11.h"
 #include "types.h"
 #include "debug.h"
 #include "preferences.h"
 
 
-#include "mypkcs11.h"
+#include "pkcs11.h"
 #include "types.h"
 #include "constants.h"
 

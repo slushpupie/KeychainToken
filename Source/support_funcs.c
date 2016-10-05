@@ -21,6 +21,11 @@
  */
 #include "support_funcs.h"
 
+#include <openssl/err.h>
+
+#include "debug.h"
+#include "preferences.h"
+
 unsigned int
 updateSlotList()
 {

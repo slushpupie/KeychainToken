@@ -21,6 +21,8 @@
  */
 #include "preferences.h"
 
+#include <CoreServices/CoreServices.h>
+
 // Note: If not NULL the results have to be DisposePtr'ed.
 static char* Copy_CFStringRefToCString(const CFStringRef pCFStringRef)
 {

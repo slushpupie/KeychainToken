@@ -22,13 +22,11 @@
 #ifndef _DEBUG_H_
 #define _DEBUG_H_
 
-#include <stdlib.h>
-#include <string.h>
-
-#include <CoreFoundation/CoreFoundation.h>
-
 #include "pkcs11.h"
 
+#include <MacTypes.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define DEBUG_CRITICAL  1
 #define DEBUG_WARNING   2

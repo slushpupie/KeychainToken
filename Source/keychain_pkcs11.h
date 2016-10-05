@@ -22,23 +22,13 @@
 #ifndef _KEYCHAIN_PKCS11_H_
 #define _KEYCHAIN_PKCS11_H_
 
-#include <Carbon/Carbon.h>
-#include <CoreFoundation/CoreFoundation.h>
-#include <CoreFoundation/CFPreferences.h>
 #include <Security/Security.h>
-#include <stdio.h>
-#include <string.h>
-#include <Security/cssm.h>
-#include <openssl/x509.h>
-#include <time.h>
 
 #include "pkcs11.h"
-#include "types.h"
 #include "constants.h"
+#include "types.h"
 
-#include "support_funcs.h"
 #include "debug.h"
-#include "preferences.h"
 
 static CK_INFO ckInfo = {
     {2, 11},

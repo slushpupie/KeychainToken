@@ -21,6 +21,10 @@
  */
 #include "keychain_pkcs11.h"
 
+#include <libgen.h>
+#include "preferences.h"
+#include "support_funcs.h"
+
 #define CHECK_SLOTID(id) if ( ((id) < 0) || ((id) > MAX_SLOTS - 1) ) return CKR_SLOT_ID_INVALID
 
 CK_RV

@@ -22,22 +22,11 @@
 #ifndef _SUPPORT_FUNCS_H_
 #define _SUPPORT_FUNCS_H_
 
-#include <Security/cssm.h>
-#include <openssl/x509.h>
-#include <openssl/err.h>
-
-#include "pkcs11.h"
-#include "types.h"
-#include "debug.h"
-#include "preferences.h"
-
+#include <Security/Security.h>
 
 #include "pkcs11.h"
 #include "types.h"
 #include "constants.h"
-
-#include "debug.h"
-#include "preferences.h"
 
 extern CK_BBOOL initialized;
 extern SecKeychainRef keychainSlots[MAX_SLOTS];

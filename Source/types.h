@@ -21,9 +21,8 @@
  */
 #ifndef _TYPES_H_
 #define _TYPES_H_
-#include "constants.h"
 
-#include <Security/Security.h>
+#include <openssl/x509.h>
 
 typedef struct _certObjectEntry {
     SecIdentityRef idRef;

@@ -172,7 +172,7 @@ int main(int argc, char *argv[]) {
     rv = p11p->C_GetSlotList(TRUE, NULL, &numSlots);
     if (rv != CKR_OK) {
         fprintf(stderr, "Error getting Slot List\n");
-        return(rv);
+        return((int)rv);
     }
     printf("Found %lu slots\n", numSlots);
 
@@ -183,7 +183,7 @@ int main(int argc, char *argv[]) {
     if (rv != CKR_OK) {
         free(slotList);
         fprintf(stderr, "Error getting Slot List\n");
-        return(rv);
+        return((int)rv);
     }
 
     for (i=0; i < numSlots; i++) {

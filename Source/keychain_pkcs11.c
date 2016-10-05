@@ -1326,10 +1326,6 @@ findObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, CK_ULONG 
         return CKR_ARGUMENTS_BAD;
     }
 
-    if ( ulMaxObjectCount < 0 ) {
-        return CKR_ARGUMENTS_BAD;
-    }
-
     session = findSessionEntry(hSession);
     if(session == NULL) {
         return CKR_SESSION_HANDLE_INVALID;

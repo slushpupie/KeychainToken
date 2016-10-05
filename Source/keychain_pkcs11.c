@@ -2019,7 +2019,7 @@ c_verify(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_B
         }
     }
     CSSM_DeleteContext(session->verifyContext);
-    session->verifyContext;
+    session->verifyContext = 0;
 
 	return ret;
 }

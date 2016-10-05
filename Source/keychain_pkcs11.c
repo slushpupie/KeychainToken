@@ -1468,7 +1468,7 @@ c_encrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_
 {
     sessionEntry *session = NULL;
     CSSM_DATA plainText, cipherText, extra;
-    UInt32 bytesEncrypted = 0;
+    CSSM_SIZE bytesEncrypted = 0;
     CSSM_RETURN status = 0;
     CK_RV ret = CKR_OK;
 
@@ -1619,7 +1619,7 @@ decrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BY
 {
     sessionEntry *session = NULL;
     CSSM_DATA input, output, extra;
-    UInt32 bytesDecrypted = 0;
+    CSSM_SIZE bytesDecrypted = 0;
     CSSM_RETURN status = 0;
     CK_RV ret = CKR_OK;
 

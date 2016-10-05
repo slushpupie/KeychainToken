@@ -31,7 +31,7 @@ updateSlotList()
 {
     OSStatus status = 0;
     CFArrayRef kcSrchList = NULL;
-    unsigned int found = 0;
+    CFIndex found = 0;
     unsigned int i,j,whitelist;
 
 
@@ -332,7 +332,7 @@ makeObjectFromCertificateRef(SecCertificateRef certRef, SecKeychainRef keychain,
     SecKeychainAttributeList *attrList = NULL;
     SecKeychainAttributeInfo *info = NULL;
     CSSM_DATA certData;
-    unsigned char *pData = NULL;
+    const unsigned char *pData = NULL;
     int ix;
 
     /*
@@ -572,7 +572,7 @@ makeObjectFromKeyRef(SecKeyRef keyRef, SecKeychainRef keychain, CK_OBJECT_CLASS 
         object->storage.publicKey.pubKey = d2i_PUBKEY(NULL, (void *) &data, CFDataGetLength(outData));
         if(object->storage.publicKey.pubKey == NULL) {
             char msg[1024];
-            int err = ERR_get_error();
+            unsigned long err = ERR_get_error();
             debug(DEBUG_VERBOSE, "Error parsing public key: %s\n", err, ERR_error_string(err, msg));
             return NULL;
         }
@@ -1313,12 +1313,12 @@ getAttributeValuePrivateKey(objectEntry *object, CK_ATTRIBUTE_PTR pTemplate, CK_
                 char tag[] = "(  )";
 
 
-                int m = strlen(sn);
-                int n = strlen(tag);
+                size_t m = strlen(sn);
+                size_t n = strlen(tag);
                 if (pTemplate[i].pValue != NULL) {
                     if (pTemplate[i].ulValueLen >= m + n) {
                         memcpy(pTemplate[i].pValue, sn, m); /*not null terminated*/
-                        sprintf(tag,"(%02d)",object->id);
+                        sprintf(tag,"(%02lu)",object->id);
                         memcpy(pTemplate[i].pValue+m, tag, n);
                         debug(DEBUG_VERBOSE,"    %s%s\n",sn,tag);
                     } else {

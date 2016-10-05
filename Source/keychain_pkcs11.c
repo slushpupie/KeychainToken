@@ -362,8 +362,8 @@ getMechanismInfo(CK_SLOT_ID slotID, CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PT
     for(i = 0; i < numMechanisms; i++) {
         if (mechanismList[i].mech == type) {
             *pInfo = mechanismList[i].info;
+            return CKR_OK;
         }
-        return CKR_OK;
     }
     return CKR_MECHANISM_INVALID;
 }

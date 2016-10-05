@@ -72,6 +72,7 @@
 			children = (
 				692300C10FF55CDA0031A8B7 /* Frameworks */,
 				08FB7795FE84155DC02AAC07 /* Source */,
+				88613B871DA5815A00E8DD52 /* Test */,
 				1AB674ADFE9D54B511CA2CBB /* Products */,
 				692302C20FF925BB0031A8B7 /* README */,
 			);
@@ -87,8 +88,6 @@
 				6983BC050FF14BDA00FED01D /* pkcs11.h */,
 				6983BC070FF14C6C00FED01D /* pkcs11f.h */,
 				6983BCB80FF14C9500FED01D /* pkcs11t.h */,
-				6983BDD10FF276EF00FED01D /* pkcs11_test.h */,
-				6983BDD20FF276EF00FED01D /* pkcs11_test.c */,
 				6923007F0FF557160031A8B7 /* preferences.h */,
 				692300800FF557160031A8B7 /* preferences.c */,
 				6924E80A0FFC0A9A00907808 /* debug.h */,
@@ -120,6 +119,15 @@
 				6983BB5B0FEFEDAE00FED01D /* Security.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		88613B871DA5815A00E8DD52 /* Test */ = {
+			isa = PBXGroup;
+			children = (
+				6983BDD10FF276EF00FED01D /* pkcs11_test.h */,
+				6983BDD20FF276EF00FED01D /* pkcs11_test.c */,
+			);
+			path = Test;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

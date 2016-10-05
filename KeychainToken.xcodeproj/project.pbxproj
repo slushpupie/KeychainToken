@@ -265,6 +265,9 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "$(SYSTEM_LIBRARY_DIR)/Frameworks/Carbon.framework/Headers/Carbon.h";
 				INSTALL_PATH = /usr/local/lib;
+				LIBRARY_SEARCH_PATHS = "$(OPENSSL_PREFIX)/lib";
+				OPENSSL_PREFIX = /usr/local/opt/openssl;
+				OTHER_CFLAGS = "-isystem$(OPENSSL_PREFIX)/include";
 				OTHER_LDFLAGS = (
 					"-lcrypto",
 					"-framework",
@@ -288,6 +291,9 @@
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "$(SYSTEM_LIBRARY_DIR)/Frameworks/Carbon.framework/Headers/Carbon.h";
 				INSTALL_PATH = /usr/local/lib;
+				LIBRARY_SEARCH_PATHS = "$(OPENSSL_PREFIX)/lib";
+				OPENSSL_PREFIX = /usr/local/opt/openssl;
+				OTHER_CFLAGS = "-isystem$(OPENSSL_PREFIX)/include";
 				OTHER_LDFLAGS = (
 					"-lcrypto",
 					"-framework",

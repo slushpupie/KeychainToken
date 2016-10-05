@@ -198,8 +198,7 @@ getSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pSlotInfo)
 
         pSlotInfo->flags |= CKF_TOKEN_PRESENT;
 
-        keychainName = malloc(MAX_KEYCHAIN_PATH_LEN);
-        memset(keychainName, 0, sizeof(keychainName));
+        keychainName = calloc(MAX_KEYCHAIN_PATH_LEN, sizeof(char));
         len = MAX_KEYCHAIN_PATH_LEN - 1;
         status = SecKeychainGetPath(keychainSlots[slotID], &len, keychainName);
         if (status != 0) {

@@ -29,7 +29,6 @@
 #include "pkcs11.h"
 #include "debug.h"
 
-
 CK_RV load_library(char *library, CK_FUNCTION_LIST_PTR *p11p) {
     CK_RV rv;
     void *p11lib_handle = NULL;
@@ -87,9 +86,9 @@ CK_RV getPassword(CK_UTF8CHAR *pass, CK_ULONG *length) {
 
     ret = tcsetattr(fileno(stdin), TCSANOW, &save);
     if (ret) return(CKR_GENERAL_ERROR);
+
     printf("\n");
     return(0);
-    
 }
 
 CK_RV login(CK_FUNCTION_LIST_PTR p11p, CK_SESSION_HANDLE hSession, int admin, CK_UTF8CHAR *password, CK_ULONG passwordLen) {
@@ -115,7 +114,6 @@ CK_RV login(CK_FUNCTION_LIST_PTR p11p, CK_SESSION_HANDLE hSession, int admin, CK
     memset(pin, 0, sizeof(pin));
     return(rv);
 }
-
 
 int main(int argc, char *argv[]) {
     CK_RV rv;
@@ -145,7 +143,6 @@ int main(int argc, char *argv[]) {
     CK_SLOT_ID validSlot = -1;
     CK_SLOT_INFO slotInfo;
 
-
     int i;
     if(argc == 1) {
         rv = load_library("keychain_pkcs11.dylib", &p11p);
@@ -174,7 +171,6 @@ int main(int argc, char *argv[]) {
     } else {
         fprintf(stderr, "Unable to get info (rv = %X)\n", rv);
     }
-
 
     rv = p11p->C_GetSlotList(TRUE, NULL, &numSlots);
     if (rv != CKR_OK) {
@@ -209,8 +205,6 @@ int main(int argc, char *argv[]) {
     if (slotList) free(slotList);
     if (validSlot == -1)
         fprintf(stderr, "No slots with tokens!\n");
-
-
 
     slot = validSlot;
 

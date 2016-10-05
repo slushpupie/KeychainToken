@@ -19,10 +19,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
  */
-
 #ifndef _KEYCHAIN_PKCS11_H_
 #define _KEYCHAIN_PKCS11_H_
-
 
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
@@ -42,21 +40,12 @@
 #include "debug.h"
 #include "preferences.h"
 
-
-
-
-
-
-
-
-
-
 static CK_INFO ckInfo = {
-{2, 11},
-"KeychainToken",
-0,
-"Apple Keychain PKCS#11         ",
-{0, 1}
+    {2, 11},
+    "KeychainToken",
+    0,
+    "Apple Keychain PKCS#11         ",
+    {0, 1}
 };
 
 CK_BBOOL initialized = CK_FALSE;
@@ -326,6 +315,5 @@ C_GetFunctionList(CK_FUNCTION_LIST_PTR_PTR pPtr)
     *pPtr = &functionList;
     return CKR_OK;
 }
-
 
 #endif

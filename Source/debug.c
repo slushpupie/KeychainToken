@@ -19,12 +19,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
-
 #include "debug.h"
 
 #include <Security/Security.h>
-
 
 char *hexify(unsigned char *data, int len) {
     char *s;

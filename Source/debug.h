@@ -19,7 +19,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 #ifndef _DEBUG_H_
 #define _DEBUG_H_
 
@@ -31,7 +30,6 @@
 #include "pkcs11.h"
 
 
-
 #define DEBUG_CRITICAL  1
 #define DEBUG_WARNING   2
 #define DEBUG_IMPORTANT 3
@@ -41,8 +39,6 @@
 #ifndef DEBUG_LEVEL
 #define DEBUG_LEVEL DEBUG_CRITICAL
 #endif
-
-
 
 void debug(int level, const char* format, ...);
 

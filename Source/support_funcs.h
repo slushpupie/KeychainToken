@@ -19,7 +19,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 #ifndef _SUPPORT_FUNCS_H_
 #define _SUPPORT_FUNCS_H_
 
@@ -40,23 +39,17 @@
 #include "debug.h"
 #include "preferences.h"
 
-
 extern CK_BBOOL initialized;
 extern SecKeychainRef keychainSlots[MAX_SLOTS];
 extern sessionEntry *firstSession;
 extern CK_SESSION_HANDLE sessionCounter;
 extern mutexFunctions mutex;
 
-
-
-
 unsigned int updateSlotList();
 
 sessionEntry * findSessionEntry(CK_SESSION_HANDLE hSession);
 void addSession(sessionEntry * newSession);
 void removeSession(CK_SESSION_HANDLE hSession);
-
-
 
 int isDuplicated(sessionEntry *session, objectEntry *object);
 void addObject(sessionEntry *session, objectEntry *object);
@@ -84,4 +77,5 @@ char * basename(const char *input);
 void setDateFromASN1Time(const ASN1_TIME *aTime, char *out);
 
 CSSM_ALGORITHMS pMechanismToCSSM_ALGID(CK_MECHANISM_PTR pMechanism);
+
 #endif

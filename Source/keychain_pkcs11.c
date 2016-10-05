@@ -19,7 +19,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 #include "keychain_pkcs11.h"
 
 #define CHECK_SLOTID(id) if ( ((id) < 0) || ((id) > MAX_SLOTS - 1) ) return CKR_SLOT_ID_INVALID
@@ -1298,10 +1297,6 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
                     //TODO
                     debug(DEBUG_VERBOSE,"(todo)\n");
                     break;
-
-
-
-
 
                 default:
                     debug(DEBUG_INFO,"Requested unknown attribute: 0x%X (%s)\n", pTemplate[i].type, getCKAName(pTemplate[i].type));

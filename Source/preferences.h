@@ -19,8 +19,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
-
 #ifndef _PREFERENCES_H_
 #define _PREFERENCES_H_
 
@@ -32,6 +30,5 @@ int isKeychainBlacklisted(char *keychainPath);
 int isKeychainWhitelisted(char *keychainPath);
 int isKeychainGreylisted(char *keychainPath);
 int useWhitelist();
-
 
 #endif

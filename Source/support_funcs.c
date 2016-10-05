@@ -19,7 +19,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 #include "support_funcs.h"
 
 unsigned int
@@ -1717,9 +1716,7 @@ pMechanismToCSSM_ALGID(CK_MECHANISM_PTR pMechanism){
 		case CKM_SSL3_SHA1_MAC:
 			return CSSM_ALGID_SSL3SHA1_MAC;
 
-
-
-            /* Supported by PKCS, but no equiv in CSSM */
+        /* Supported by PKCS, but no equiv in CSSM */
 		case CKM_RC2_MAC_GENERAL:
 		case CKM_RC5_MAC_GENERAL:
 		case CKM_AES_MAC_GENERAL:

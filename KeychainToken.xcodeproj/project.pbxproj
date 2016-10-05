@@ -32,7 +32,6 @@
 		6983BB7B0FF008B100FED01D /* keychain_pkcs11.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = keychain_pkcs11.h; sourceTree = "<group>"; };
 		6983BB7C0FF008B100FED01D /* keychain_pkcs11.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = keychain_pkcs11.c; sourceTree = "<group>"; };
 		6983BB8A0FF14AEC00FED01D /* keychain_pkcs11.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = keychain_pkcs11.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
-		6983BDD10FF276EF00FED01D /* pkcs11_test.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pkcs11_test.h; sourceTree = "<group>"; };
 		6983BDD20FF276EF00FED01D /* pkcs11_test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = pkcs11_test.c; sourceTree = "<group>"; };
 		6983BDD60FF2770E00FED01D /* pkcs11_test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = pkcs11_test; sourceTree = BUILT_PRODUCTS_DIR; };
 		883BD2CD1DA57F4600051423 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
@@ -115,7 +114,6 @@
 		88613B871DA5815A00E8DD52 /* Test */ = {
 			isa = PBXGroup;
 			children = (
-				6983BDD10FF276EF00FED01D /* pkcs11_test.h */,
 				6983BDD20FF276EF00FED01D /* pkcs11_test.c */,
 			);
 			path = Test;

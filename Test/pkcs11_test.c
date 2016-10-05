@@ -19,9 +19,102 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "pkcs11_test.h"
+#include <termios.h>
+#include <dlfcn.h>
 
+#include "pkcs11.h"
+#include "debug.h"
+
+
+CK_RV load_library(char *library, CK_FUNCTION_LIST_PTR *p11p) {
+    CK_RV rv;
+    void *p11lib_handle = NULL;
+    CK_RV (*getflist)(CK_FUNCTION_LIST_PTR_PTR);
+
+    if (!library) {
+        *p11p = NULL;
+        return(-1);
+    }
+    p11lib_handle = dlopen(library, RTLD_NOW);
+    if (p11lib_handle == NULL) {
+        printf("Error loading PKCS11 library: %s\n", dlerror());
+        return(EXIT_FAILURE);
+    }
+
+    getflist = (CK_RV (*)(CK_FUNCTION_LIST_PTR_PTR))
+    dlsym(p11lib_handle, "C_GetFunctionList");
+    if (getflist == NULL) {
+        printf("Error finding \"C_GetFunctionList\" symbol: %s\n", dlerror());
+        return(EXIT_FAILURE);
+    }
+
+    rv = (*getflist)(p11p);
+    if (rv != CKR_OK) {
+        printf("Error calling \"C_GetFunctionList\" (rv = %d)\n", rv);
+        return(rv);
+    }
+    return(CKR_OK);
+}
+
+CK_RV getPassword(CK_UTF8CHAR *pass, CK_ULONG *length) {
+    struct termios t, save;
+    int ret;
+    char *cp;
+
+    if (pass == NULL || length == NULL)
+        return(-1);
+
+    memset(&t, 0, sizeof(t));
+    ret = tcgetattr(fileno(stdin), &t);
+    if (ret) return(CKR_GENERAL_ERROR);
+
+    save = t;
+    t.c_lflag &= ~ECHO;
+
+    ret = tcsetattr(fileno(stdin), TCSANOW, &t);
+    if (ret) return(CKR_GENERAL_ERROR);
+
+    (void)fgets((char *)pass, (int)*length, stdin);
+    cp = strchr((char *)pass, '\n');
+    if (cp) *cp = (char)NULL;
+    else pass[*length - 1] = (char)NULL;
+
+    *length = (CK_ULONG)strlen((char *)pass);
+
+    ret = tcsetattr(fileno(stdin), TCSANOW, &save);
+    if (ret) return(CKR_GENERAL_ERROR);
+    printf("\n");
+    return(0);
+    
+}
+
+CK_RV login(CK_FUNCTION_LIST_PTR p11p, CK_SESSION_HANDLE hSession, int admin, CK_UTF8CHAR *password, CK_ULONG passwordLen) {
+    CK_UTF8CHAR pin[64];
+    CK_ULONG pinLen = sizeof(pin) - 1;
+    CK_RV rv;
+
+    if (passwordLen > 0 && password != NULL && passwordLen <= pinLen) {
+        memcpy(pin, password, passwordLen);
+        pinLen = passwordLen;
+    } else {
+        printf("Enter %sPIN: ", (admin == 1) ? "admin " : "");
+        rv = getPassword(pin, &pinLen);
+        if (rv!= 0)
+            return(-1);
+    }
+
+    if (admin == 1)
+        rv = p11p->C_Login(hSession, CKU_SO, pin, pinLen);
+    else
+        rv = p11p->C_Login(hSession, CKU_USER, pin, pinLen);
+
+    memset(pin, 0, sizeof(pin));
+    return(rv);
+}
 
 
 int main(int argc, char *argv[]) {
@@ -451,92 +544,4 @@ cleanup:
 
 
     return 0;
-}
-
-CK_RV login(CK_FUNCTION_LIST_PTR p11p, CK_SESSION_HANDLE hSession, int admin, CK_UTF8CHAR *password, CK_ULONG passwordLen) {
-    CK_UTF8CHAR pin[64];
-    CK_ULONG pinLen = sizeof(pin) - 1;
-    CK_RV rv;
-
-    if (passwordLen > 0 && password != NULL && passwordLen <= pinLen) {
-        memcpy(pin, password, passwordLen);
-        pinLen = passwordLen;
-    } else {
-        printf("Enter %sPIN: ", (admin == 1) ? "admin " : "");
-        rv = getPassword(pin, &pinLen);
-        if (rv!= 0)
-            return(-1);
-    }
-
-    if (admin == 1)
-        rv = p11p->C_Login(hSession, CKU_SO, pin, pinLen);
-    else
-        rv = p11p->C_Login(hSession, CKU_USER, pin, pinLen);
-
-    memset(pin, 0, sizeof(pin));
-    return(rv);
-}
-
-
-CK_RV load_library(char *library, CK_FUNCTION_LIST_PTR *p11p) {
-    CK_RV rv;
-    LpHandleType p11lib_handle = NULL;
-    CK_RV (*getflist)(CK_FUNCTION_LIST_PTR_PTR);
-
-    if (!library) {
-        *p11p = NULL;
-        return(-1);
-    }
-    p11lib_handle = dlopen(library, RTLD_NOW);
-    if (p11lib_handle == NULL) {
-        printf("Error loading PKCS11 library: %s\n", dlerror());
-        return(EXIT_FAILURE);
-    }
-
-    getflist = (CK_RV (*)(CK_FUNCTION_LIST_PTR_PTR))
-    GetFuncFromMod(p11lib_handle,
-                   "C_GetFunctionList");
-    if (getflist == NULL) {
-        printf("Error finding \"C_GetFunctionList\" symbol: %s\n", dlerror());
-        return(EXIT_FAILURE);
-    }
-
-    rv = (*getflist)(p11p);
-    if (rv != CKR_OK) {
-        printf("Error calling \"C_GetFunctionList\" (rv = %d)\n", rv);
-        return(rv);
-    }
-    return(CKR_OK);
-}
-
-CK_RV getPassword(CK_UTF8CHAR *pass, CK_ULONG *length) {
-    struct termios t, save;
-    int ret;
-    char *cp;
-
-    if (pass == NULL || length == NULL)
-        return(-1);
-
-    memset(&t, 0, sizeof(t));
-    ret = tcgetattr(fileno(stdin), &t);
-    if (ret) return(CKR_GENERAL_ERROR);
-
-    save = t;
-    t.c_lflag &= ~ECHO;
-
-    ret = tcsetattr(fileno(stdin), TCSANOW, &t);
-    if (ret) return(CKR_GENERAL_ERROR);
-
-    (void)fgets((char *)pass, (int)*length, stdin);
-    cp = strchr((char *)pass, '\n');
-    if (cp) *cp = (char)NULL;
-    else pass[*length - 1] = (char)NULL;
-
-    *length = (CK_ULONG)strlen((char *)pass);
-
-    ret = tcsetattr(fileno(stdin), TCSANOW, &save);
-    if (ret) return(CKR_GENERAL_ERROR);
-    printf("\n");
-    return(0);
-
 }

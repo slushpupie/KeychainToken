@@ -99,7 +99,7 @@
 				697EEADA10039CA20063C91C /* constants.h */,
 				69AA6EFB100B83C8004FAA10 /* pkcs11n.h */,
 			);
-			name = Source;
+			path = Source;
 			sourceTree = "<group>";
 		};
 		1AB674ADFE9D54B511CA2CBB /* Products */ = {

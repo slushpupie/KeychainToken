@@ -26,6 +26,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <CoreFoundation/CoreFoundation.h>
+
 #include "mypkcs11.h"
 
 

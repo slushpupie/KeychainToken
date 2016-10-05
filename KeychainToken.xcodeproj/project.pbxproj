@@ -12,19 +12,20 @@
 		6924E80E0FFC0A9A00907808 /* debug.c in Sources */ = {isa = PBXBuildFile; fileRef = 6924E80B0FFC0A9A00907808 /* debug.c */; };
 		697EEACF100397560063C91C /* support_funcs.c in Sources */ = {isa = PBXBuildFile; fileRef = 697EEACD100397560063C91C /* support_funcs.c */; };
 		697EEAD410039A880063C91C /* types.h in Headers */ = {isa = PBXBuildFile; fileRef = 697EEAD310039A880063C91C /* types.h */; };
-		6983BB8E0FF14B0B00FED01D /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6983BB8D0FF14B0B00FED01D /* Security.framework */; };
 		6983BC060FF14BDA00FED01D /* pkcs11.h in Headers */ = {isa = PBXBuildFile; fileRef = 6983BC050FF14BDA00FED01D /* pkcs11.h */; };
 		6983BC080FF14C6C00FED01D /* pkcs11f.h in Headers */ = {isa = PBXBuildFile; fileRef = 6983BC070FF14C6C00FED01D /* pkcs11f.h */; };
 		6983BCB90FF14C9500FED01D /* pkcs11t.h in Headers */ = {isa = PBXBuildFile; fileRef = 6983BCB80FF14C9500FED01D /* pkcs11t.h */; };
 		6983BDC80FF2768100FED01D /* keychain_pkcs11.c in Sources */ = {isa = PBXBuildFile; fileRef = 6983BB7C0FF008B100FED01D /* keychain_pkcs11.c */; };
 		6983BDDA0FF2771D00FED01D /* pkcs11_test.c in Sources */ = {isa = PBXBuildFile; fileRef = 6983BDD20FF276EF00FED01D /* pkcs11_test.c */; };
 		69AA6EFC100B83C8004FAA10 /* pkcs11n.h in Headers */ = {isa = PBXBuildFile; fileRef = 69AA6EFB100B83C8004FAA10 /* pkcs11n.h */; };
+		883BD2CE1DA57F4600051423 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 883BD2CD1DA57F4600051423 /* Security.framework */; };
+		883BD2D01DA57F5700051423 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 883BD2CF1DA57F5700051423 /* CoreFoundation.framework */; };
+		883BD2D21DA57FDB00051423 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 883BD2D11DA57FDB00051423 /* CoreServices.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		6923007F0FF557160031A8B7 /* preferences.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = preferences.h; sourceTree = "<group>"; };
 		692300800FF557160031A8B7 /* preferences.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = preferences.c; sourceTree = "<group>"; };
-		692300BC0FF55CD00031A8B7 /* CoreServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreServices.framework; path = System/Library/Frameworks/CoreServices.framework; sourceTree = SDKROOT; };
 		692302C20FF925BB0031A8B7 /* README */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
 		6924E80A0FFC0A9A00907808 /* debug.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = debug.h; sourceTree = "<group>"; };
 		6924E80B0FFC0A9A00907808 /* debug.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = debug.c; sourceTree = "<group>"; };
@@ -32,12 +33,9 @@
 		697EEACD100397560063C91C /* support_funcs.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = support_funcs.c; sourceTree = "<group>"; };
 		697EEAD310039A880063C91C /* types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = types.h; sourceTree = "<group>"; };
 		697EEADA10039CA20063C91C /* constants.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = constants.h; sourceTree = "<group>"; };
-		6983BB560FEFED9C00FED01D /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = /System/Library/Frameworks/CoreFoundation.framework; sourceTree = "<absolute>"; };
-		6983BB5B0FEFEDAE00FED01D /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = /System/Library/Frameworks/Security.framework; sourceTree = "<absolute>"; };
 		6983BB7B0FF008B100FED01D /* keychain_pkcs11.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = keychain_pkcs11.h; sourceTree = "<group>"; };
 		6983BB7C0FF008B100FED01D /* keychain_pkcs11.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = keychain_pkcs11.c; sourceTree = "<group>"; };
 		6983BB8A0FF14AEC00FED01D /* keychain_pkcs11.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = keychain_pkcs11.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
-		6983BB8D0FF14B0B00FED01D /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		6983BC030FF14BA600FED01D /* mypkcs11.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = mypkcs11.h; sourceTree = "<group>"; };
 		6983BC050FF14BDA00FED01D /* pkcs11.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pkcs11.h; sourceTree = "<group>"; };
 		6983BC070FF14C6C00FED01D /* pkcs11f.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pkcs11f.h; sourceTree = "<group>"; };
@@ -46,6 +44,9 @@
 		6983BDD20FF276EF00FED01D /* pkcs11_test.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = pkcs11_test.c; sourceTree = "<group>"; };
 		6983BDD60FF2770E00FED01D /* pkcs11_test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = pkcs11_test; sourceTree = BUILT_PRODUCTS_DIR; };
 		69AA6EFB100B83C8004FAA10 /* pkcs11n.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pkcs11n.h; sourceTree = "<group>"; };
+		883BD2CD1DA57F4600051423 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
+		883BD2CF1DA57F5700051423 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
+		883BD2D11DA57FDB00051423 /* CoreServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreServices.framework; path = System/Library/Frameworks/CoreServices.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -53,7 +54,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				6983BB8E0FF14B0B00FED01D /* Security.framework in Frameworks */,
+				883BD2D21DA57FDB00051423 /* CoreServices.framework in Frameworks */,
+				883BD2D01DA57F5700051423 /* CoreFoundation.framework in Frameworks */,
+				883BD2CE1DA57F4600051423 /* Security.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -113,10 +116,9 @@
 		692300C10FF55CDA0031A8B7 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				6983BB8D0FF14B0B00FED01D /* Security.framework */,
-				692300BC0FF55CD00031A8B7 /* CoreServices.framework */,
-				6983BB560FEFED9C00FED01D /* CoreFoundation.framework */,
-				6983BB5B0FEFEDAE00FED01D /* Security.framework */,
+				883BD2D11DA57FDB00051423 /* CoreServices.framework */,
+				883BD2CF1DA57F5700051423 /* CoreFoundation.framework */,
+				883BD2CD1DA57F4600051423 /* Security.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -305,17 +307,11 @@
 				GCC_ENABLE_FIX_AND_CONTINUE = YES;
 				GCC_MODEL_TUNING = G5;
 				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "$(SYSTEM_LIBRARY_DIR)/Frameworks/Carbon.framework/Headers/Carbon.h";
 				INSTALL_PATH = /usr/local/lib;
 				LIBRARY_SEARCH_PATHS = "$(OPENSSL_PREFIX)/lib";
 				OPENSSL_PREFIX = /usr/local/opt/openssl;
 				OTHER_CFLAGS = "-isystem$(OPENSSL_PREFIX)/include";
-				OTHER_LDFLAGS = (
-					"-lcrypto",
-					"-framework",
-					Carbon,
-				);
+				OTHER_LDFLAGS = "-lcrypto";
 				PREBINDING = NO;
 				PRODUCT_NAME = keychain_pkcs11;
 			};
@@ -331,17 +327,11 @@
 				DYLIB_CURRENT_VERSION = 1;
 				GCC_ENABLE_FIX_AND_CONTINUE = NO;
 				GCC_MODEL_TUNING = G5;
-				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "$(SYSTEM_LIBRARY_DIR)/Frameworks/Carbon.framework/Headers/Carbon.h";
 				INSTALL_PATH = /usr/local/lib;
 				LIBRARY_SEARCH_PATHS = "$(OPENSSL_PREFIX)/lib";
 				OPENSSL_PREFIX = /usr/local/opt/openssl;
 				OTHER_CFLAGS = "-isystem$(OPENSSL_PREFIX)/include";
-				OTHER_LDFLAGS = (
-					"-lcrypto",
-					"-framework",
-					Carbon,
-				);
+				OTHER_LDFLAGS = "-lcrypto";
 				PREBINDING = NO;
 				PRODUCT_NAME = keychain_pkcs11;
 				ZERO_LINK = NO;
@@ -357,8 +347,6 @@
 				GCC_ENABLE_FIX_AND_CONTINUE = YES;
 				GCC_MODEL_TUNING = G5;
 				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "$(SYSTEM_LIBRARY_DIR)/Frameworks/Carbon.framework/Headers/Carbon.h";
 				INSTALL_PATH = /usr/local/bin;
 				PREBINDING = NO;
 				PRODUCT_NAME = pkcs11_test;
@@ -373,8 +361,6 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				GCC_ENABLE_FIX_AND_CONTINUE = NO;
 				GCC_MODEL_TUNING = G5;
-				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "$(SYSTEM_LIBRARY_DIR)/Frameworks/Carbon.framework/Headers/Carbon.h";
 				INSTALL_PATH = /usr/local/bin;
 				PREBINDING = NO;
 				PRODUCT_NAME = pkcs11_test;

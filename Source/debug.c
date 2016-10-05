@@ -23,6 +23,8 @@
 
 #include "debug.h"
 
+#include <Security/Security.h>
+
 
 char *hexify(unsigned char *data, int len) {
     char *s;

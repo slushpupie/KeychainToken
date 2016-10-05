@@ -24,6 +24,8 @@
 #define _TYPES_H_
 #include "constants.h"
 
+#include <Security/Security.h>
+
 typedef struct _certObjectEntry {
     SecIdentityRef idRef;
     SecCertificateRef certRef;

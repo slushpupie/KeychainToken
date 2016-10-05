@@ -120,9 +120,6 @@ int main(int argc, char *argv[]) {
     CK_FUNCTION_LIST_PTR p11p;
     CK_SLOT_ID slot;
     CK_SESSION_HANDLE hSession;
-    CK_UTF8CHAR pin[64];
-    CK_ULONG pinLen = sizeof(pin) - 1;
-    CK_BYTE label[32];
 
     CK_INFO info;
     CK_SLOT_INFO sInfo;

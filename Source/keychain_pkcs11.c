@@ -654,7 +654,6 @@ findObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG
     SecKeychainItemRef itemRef = NULL;
     SecItemClass itemClass = 0;
     SecKeychainAttributeList *attrList = NULL;
-    CK_RV rv = CKR_OK;
     int count = 0;
 
 

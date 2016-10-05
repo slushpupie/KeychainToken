@@ -23,7 +23,7 @@
 
 #include <Security/Security.h>
 
-char *hexify(unsigned char *data, int len) {
+char *hexify(unsigned char *data, unsigned long len) {
     char *s;
     int i;
     char hexDigits[] = { '0', '1', '2', '3', '4', '5', '6', '7',
@@ -40,7 +40,7 @@ char *hexify(unsigned char *data, int len) {
     return(s);
 }
 
-char *stringify(unsigned char *str, int length) {
+char *stringify(unsigned char *str, unsigned long length) {
     static char my_string[128];
 
     if (length >= 128) return(NULL);

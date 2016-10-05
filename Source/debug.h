@@ -46,7 +46,7 @@ const char * getCKOName(CK_OBJECT_CLASS class);
 const char * getCKMName(CK_MECHANISM_TYPE mech);
 const char * getCKCName(CK_CERTIFICATE_TYPE ctype);
 const char * getSecErrorName(OSStatus status);
-char *hexify(unsigned char *data, int len);
-char *stringify(unsigned char *str, int length);
+char *hexify(unsigned char *data, unsigned long len);
+char *stringify(unsigned char *str, unsigned long length);
 
 #endif
